@@ -1,3 +1,7 @@
+### My personal gitignore file for Java projects ###
+data/
+
+### Maven ###
 target/
 !.mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
