@@ -5,8 +5,9 @@ import java.util.Vector;
 
 public class Table implements Serializable {
     private Vector<String> pages;
+
     public Table() {
-        pages = new Vector<String>();
+        pages = new Vector<>();
     }
 
     public void addPage(Page page) {
@@ -49,11 +50,11 @@ public class Table implements Serializable {
     }
 
     public Page getPage(String pageName) throws DBAppException {
-       int index = pages.indexOf(pageName);
-         if (index == -1) {
-             throw new DBAppException("Page not found");
-         } else {
-              return getPage(index);
-         }
+        int index = pages.indexOf(pageName);
+        if (index == -1) {
+            throw new DBAppException("Page not found");
+        } else {
+            return getPage(index);
+        }
     }
 }
