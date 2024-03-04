@@ -3,23 +3,41 @@ package DB;
  * @author Wael Abouelsaadat
  */
 
-import java.util.Iterator;
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
 import java.util.Hashtable;
+import java.util.Iterator;
+import java.util.Properties;
 
 
 public class DBApp {
 
+    static Properties db_config;
 
     public DBApp() {
-
+        this.init();
     }
 
     // this does whatever initialization you would like
     // or leave it empty if there is no code you want to
     // execute at application startup
     public void init() {
+        try (FileReader
+                     reader = new FileReader("src/main/resources/DBApp.config")) {
+            DBApp.db_config = new Properties();
+            DBApp.db_config.load(reader);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
 
+        File file = new File("src/main/resources/data");
+        if (file.exists()) return;
 
+        boolean mkdir = file.mkdirs();
+        if (!mkdir) {
+            throw new RuntimeException("Couldn't make data folder");
+        }
     }
 
 

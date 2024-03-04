@@ -4,6 +4,7 @@ import java.io.*;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Vector;
+import java.util.Properties;
 
 public class Table implements Serializable {
     private String tableName;
@@ -19,7 +20,7 @@ public class Table implements Serializable {
             throw new RuntimeException("Page is null");
         }
 
-        Path path = Paths.get("resources", "data", page.hashCode() + ".ser");
+        Path path = Paths.get((String) DBApp.db_config.get("DataPath"), page.hashCode() + ".ser");
         try {
             FileOutputStream fileOut = new FileOutputStream(path.toAbsolutePath().toString());
             ObjectOutputStream out = new ObjectOutputStream(fileOut);
@@ -53,7 +54,7 @@ public class Table implements Serializable {
     }
 
     public Page getPage(String pageName) throws DBAppException {
-        Path path = Paths.get("resources", "data", pageName + ".ser");
+        Path path = Paths.get((String) DBApp.db_config.get("DataPath"), pageName + ".ser");
         int index = pages.indexOf(path);
         if (index == -1) {
             throw new DBAppException("Page not found");
