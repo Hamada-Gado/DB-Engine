@@ -1,13 +1,17 @@
 package DB;
 
 import java.io.*;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Vector;
 
 public class Table implements Serializable {
-    private Vector<String> pages;
+    private String tableName;
+    private Vector<Path> pages;
 
-    public Table() {
+    public Table(String tableName) {
         pages = new Vector<>();
+        this.tableName = tableName;
     }
 
     public void addPage(Page page) {
@@ -15,9 +19,9 @@ public class Table implements Serializable {
             throw new RuntimeException("Page is null");
         }
 
-        String path = "data/" + page.hashCode() + ".ser";
+        Path path = Paths.get("resources", "data", page.hashCode() + ".ser");
         try {
-            FileOutputStream fileOut = new FileOutputStream(path);
+            FileOutputStream fileOut = new FileOutputStream(path.toAbsolutePath().toString());
             ObjectOutputStream out = new ObjectOutputStream(fileOut);
             out.writeObject(page);
             out.close();
@@ -29,15 +33,14 @@ public class Table implements Serializable {
     }
 
     public Page getPage(int index) throws DBAppException {
-        String path = pages.get(index);
+        Path path = pages.get(index);
         if (path == null) {
-            System.out.println("Page not found");
             throw new DBAppException("Page not found");
         }
 
         Page page;
         try {
-            FileInputStream fileIn = new FileInputStream(path);
+            FileInputStream fileIn = new FileInputStream(path.toAbsolutePath().toString());
             ObjectInputStream in = new ObjectInputStream(fileIn);
             page = (Page) in.readObject();
             in.close();
@@ -50,7 +53,8 @@ public class Table implements Serializable {
     }
 
     public Page getPage(String pageName) throws DBAppException {
-        int index = pages.indexOf(pageName);
+        Path path = Paths.get("resources", "data", pageName + ".ser");
+        int index = pages.indexOf(path);
         if (index == -1) {
             throw new DBAppException("Page not found");
         } else {
