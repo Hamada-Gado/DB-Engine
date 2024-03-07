@@ -8,7 +8,7 @@ public class Page implements Serializable {
     private int max;
     private Vector<HashMap<String, Object>> records;
 
-    public Page(int max, int min) {
+    public Page(int max) {
         this.max = max;
         this.records = new Vector<HashMap<String, Object>>();
     }
