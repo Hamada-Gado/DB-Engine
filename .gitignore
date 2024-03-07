@@ -1,5 +1,6 @@
-### My personal gitignore ###
+### Java ###
 data/
+metadata.csv
 
 ### Maven ###
 target/
