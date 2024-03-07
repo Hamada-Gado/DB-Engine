@@ -4,15 +4,14 @@ import java.io.*;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Vector;
-import java.util.Properties;
 
 public class Table implements Serializable {
     private String tableName;
     private Vector<Path> pages;
 
     public Table(String tableName) {
-        pages = new Vector<>();
         this.tableName = tableName;
+        pages = new Vector<>();
     }
 
     public void addPage(Page page) {

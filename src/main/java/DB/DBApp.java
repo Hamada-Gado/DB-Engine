@@ -3,9 +3,9 @@ package DB;
  * @author Wael Abouelsaadat
  */
 
-import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
+import java.io.*;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Hashtable;
 import java.util.Iterator;
 import java.util.Properties;
@@ -23,6 +23,7 @@ public class DBApp {
     // or leave it empty if there is no code you want to
     // execute at application startup
     public void init() {
+        // Read the config file
         try (FileReader
                      reader = new FileReader("src/main/resources/DBApp.config")) {
             DBApp.db_config = new Properties();
@@ -31,12 +32,33 @@ public class DBApp {
             throw new RuntimeException(e);
         }
 
-        File file = new File("src/main/resources/data");
-        if (file.exists()) return;
+        // Create the data folder if it doesn't exist
+        File file0 = new File("src/main/resources/data");
+        if (!file0.exists()) {
+            boolean newDir = file0.mkdirs();
+            if (!newDir) {
+                throw new RuntimeException("Couldn't make data folder");
+            }
+        }
 
-        boolean mkdir = file.mkdirs();
-        if (!mkdir) {
-            throw new RuntimeException("Couldn't make data folder");
+        // Create the metadata folder if it doesn't exist
+        File file1 = new File("src/main/resources/metadata.csv");
+        if (!file1.exists()) {
+            try {
+                boolean newFile = file1.createNewFile();
+                if (!newFile) {
+                    throw new RuntimeException("Couldn't make metadata file");
+                }
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+
+            // Add the metadata header
+            try (FileWriter writer = new FileWriter(file1)) {
+                writer.write("Table Name, Column Name, Column Type, ClusteringKey, IndexName, IndexType\n");
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
         }
     }
 
@@ -50,6 +72,27 @@ public class DBApp {
     public void createTable(String strTableName,
                             String strClusteringKeyColumn,
                             Hashtable<String, String> htblColNameType) throws DBAppException {
+        // Example:
+        // data/teacher/teacher.ser
+        // data/student/student.ser
+        // data/student/pages/31234124.ser
+
+        // create a new table, and parent folder
+        Table table = new Table(strTableName);
+
+        // update metadata, and set clustering key
+
+        // save table to disk
+        Path path = Paths.get((String) DBApp.db_config.get("DataPath"), strTableName, strTableName + ".ser");
+        try {
+            FileOutputStream fileOut = new FileOutputStream(path.toAbsolutePath().toString());
+            ObjectOutputStream out = new ObjectOutputStream(fileOut);
+            out.writeObject(table);
+            out.close();
+            fileOut.close();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
 
         throw new DBAppException("not implemented yet");
     }
