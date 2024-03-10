@@ -6,9 +6,11 @@ package DB;
 import java.io.*;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Hashtable;
 import java.util.Iterator;
 import java.util.Properties;
+import java.util.stream.Collectors;
 
 
 public class DBApp {
@@ -61,7 +63,6 @@ public class DBApp {
             }
         }
     }
-
 
     // following method creates one table only
     // strClusteringKeyColumn is the name of the column that will be the primary
@@ -145,8 +146,20 @@ public class DBApp {
         return null;
     }
 
+    public ArrayList<String[]> getMetadata() {
+        ArrayList<String[]> metadata;
+        String metadataPath = DBApp.db_config.getProperty("MetadataPath");
 
-    public static void main(String[] args) {
+        try (BufferedReader br = new BufferedReader(new FileReader(metadataPath))) {
+            metadata = br.lines().map(line -> line.split(",")).collect(Collectors.toCollection(ArrayList::new));
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
+        return metadata;
+    }
+
+    public static void test() {
 
         try {
             String strTableName = "Student";
@@ -209,6 +222,10 @@ public class DBApp {
         } catch (Exception exp) {
             exp.printStackTrace();
         }
+    }
+
+    public static void main(String[] args) {
+        DBApp.test();
     }
 
 }
