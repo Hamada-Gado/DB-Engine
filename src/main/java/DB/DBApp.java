@@ -3,6 +3,8 @@ package DB;
  * @author Wael Abouelsaadat
  */
 
+import org.jetbrains.annotations.NotNull;
+
 import java.io.*;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -15,6 +17,8 @@ import java.util.stream.Collectors;
 
 public class DBApp {
 
+    static final String configPath = "src/main/resources/DBApp.config";
+    static final String metadataHeader = "Table Name,Column Name,Column Type,ClusteringKey,IndexName,IndexType\n";
     static Properties db_config;
 
     public DBApp() {
@@ -27,27 +31,27 @@ public class DBApp {
     public void init() {
         // Read the config file
         try (FileReader
-                     reader = new FileReader("src/main/resources/DBApp.config")) {
-            DBApp.db_config = new Properties();
-            DBApp.db_config.load(reader);
+                     reader = new FileReader(configPath)) {
+            db_config = new Properties();
+            db_config.load(reader);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
 
         // Create the data folder if it doesn't exist
-        File file0 = new File("src/main/resources/data");
-        if (!file0.exists()) {
-            boolean newDir = file0.mkdirs();
+        File dataFolder = new File("src/main/resources/data");
+        if (!dataFolder.exists()) {
+            boolean newDir = dataFolder.mkdirs();
             if (!newDir) {
                 throw new RuntimeException("Couldn't make data folder");
             }
         }
 
         // Create the metadata folder if it doesn't exist
-        File file1 = new File("src/main/resources/metadata.csv");
-        if (!file1.exists()) {
+        File metadataFile = new File(db_config.getProperty("MetadataPath"));
+        if (!metadataFile.exists()) {
             try {
-                boolean newFile = file1.createNewFile();
+                boolean newFile = metadataFile.createNewFile();
                 if (!newFile) {
                     throw new RuntimeException("Couldn't make metadata file");
                 }
@@ -56,8 +60,8 @@ public class DBApp {
             }
 
             // Add the metadata header
-            try (FileWriter writer = new FileWriter(file1)) {
-                writer.write("Table Name, Column Name, Column Type, ClusteringKey, IndexName, IndexType\n");
+            try (FileWriter writer = new FileWriter(metadataFile)) {
+                writer.write(metadataHeader);
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
@@ -72,19 +76,39 @@ public class DBApp {
     // type as value
     public void createTable(String strTableName,
                             String strClusteringKeyColumn,
-                            Hashtable<String, String> htblColNameType) throws DBAppException {
+                            @NotNull Hashtable<String, String> htblColNameType) throws DBAppException {
         // Example:
         // data/teacher/teacher.ser
         // data/student/student.ser
         // data/student/pages/31234124.ser
+        String metadataPath = db_config.getProperty("MetadataPath");
 
         // create a new table, and parent folder
         Table table = new Table(strTableName);
+        Path tablePath = Paths.get((String) db_config.get("DataPath"), strTableName);
+        File file = new File(tablePath.toAbsolutePath().toString());
+        if (!file.exists()) {
+            boolean newDir = file.mkdirs();
+            if (!newDir) {
+                throw new RuntimeException("Couldn't make table folder");
+            }
+        } else {
+            throw new DBAppException("Table already exists");
+        }
 
         // update metadata, and set clustering key
+        try (FileWriter writer = new FileWriter(metadataPath, true)) {
+            for (String colName : htblColNameType.keySet()) {
+                String colType = htblColNameType.get(colName);
+                String clusteringKey = colName.equals(strClusteringKeyColumn) ? "True" : "False";
+                writer.write(strTableName + "," + colName + "," + colType + "," + clusteringKey + ",null,null\n");
+            }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
 
         // save table to disk
-        Path path = Paths.get((String) DBApp.db_config.get("DataPath"), strTableName, strTableName + ".ser");
+        Path path = Paths.get((String) db_config.get("DataPath"), strTableName, strTableName + ".ser");
         try {
             FileOutputStream fileOut = new FileOutputStream(path.toAbsolutePath().toString());
             ObjectOutputStream out = new ObjectOutputStream(fileOut);
@@ -94,8 +118,6 @@ public class DBApp {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-
-        throw new DBAppException("not implemented yet");
     }
 
 
@@ -148,7 +170,7 @@ public class DBApp {
 
     public ArrayList<String[]> getMetadata() {
         ArrayList<String[]> metadata;
-        String metadataPath = DBApp.db_config.getProperty("MetadataPath");
+        String metadataPath = db_config.getProperty("MetadataPath");
 
         try (BufferedReader br = new BufferedReader(new FileReader(metadataPath))) {
             metadata = br.lines().map(line -> line.split(",")).collect(Collectors.toCollection(ArrayList::new));
