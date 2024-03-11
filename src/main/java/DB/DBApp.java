@@ -1,7 +1,4 @@
 package DB;
-/**
- * @author Wael Abouelsaadat
- */
 
 import org.jetbrains.annotations.NotNull;
 
@@ -9,8 +6,10 @@ import java.io.*;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
-import java.util.stream.Collectors;
 
+/**
+ * @author Wael Abouelsaadat
+ */
 
 public class DBApp {
 
@@ -159,23 +158,16 @@ public class DBApp {
     }
 
 
-    public Iterator<HashMap<String, Object>> selectFromTable(SQLTerm[] arrSQLTerms,
-                                             String[] strarrOperators) throws DBAppException {
+    public Iterator selectFromTable(SQLTerm[] arrSQLTerms,
+                                    String[] strarrOperators) throws DBAppException {
 
-        return null;
-    }
+        // select * from student where name = "John Noor"
 
-    public ArrayList<String[]> getMetadata() {
-        ArrayList<String[]> metadata;
-        String metadataPath = db_config.getProperty("MetadataPath");
+        String tableName = arrSQLTerms[0]._strTableName;
 
-        try (BufferedReader br = new BufferedReader(new FileReader(metadataPath))) {
-            metadata = br.lines().map(line -> line.split(",")).collect(Collectors.toCollection(ArrayList::new));
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+        LinkedList<Vector<Hashtable<String, Object>>> result = new LinkedList<>();
 
-        return metadata;
+        return result.iterator();
     }
 
     public static void test() {
@@ -187,7 +179,7 @@ public class DBApp {
             Hashtable htblColNameType = new Hashtable();
             htblColNameType.put("id", "java.lang.Integer");
             htblColNameType.put("name", "java.lang.String");
-            htblColNameType.put("gpa", "java.lang.double");
+            htblColNameType.put("gpa", "java.lang.Double");
             dbApp.createTable(strTableName, "id", htblColNameType);
             dbApp.createIndex(strTableName, "gpa", "gpaIndex");
 

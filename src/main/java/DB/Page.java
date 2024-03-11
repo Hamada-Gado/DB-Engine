@@ -1,16 +1,20 @@
 package DB;
 
 import java.io.Serializable;
-import java.util.HashMap;
+import java.util.Hashtable;
 import java.util.Vector;
 
+/**
+ * @author ahmedgado
+ */
+
 public class Page implements Serializable {
-    private int max;
-    private Vector<HashMap<String, Object>> records;
+    private final int max;
+    private final Vector<Hashtable<String, Object>> records;
 
     public Page(int max) {
         this.max = max;
-        this.records = new Vector<HashMap<String, Object>>();
+        this.records = new Vector<>();
     }
 
     public boolean isFull() {
@@ -21,10 +25,15 @@ public class Page implements Serializable {
         return records.isEmpty();
     }
 
+    public Vector<Hashtable<String, Object>> getRecords() {
+        return records;
+    }
+
+    @Override
     public String toString() {
         StringBuilder res = new StringBuilder();
 
-        for (HashMap<String, Object> record : records) {
+        for (Hashtable<String, Object> record : records) {
             StringBuilder tuple = new StringBuilder();
 
             for (String key : record.keySet()) {
