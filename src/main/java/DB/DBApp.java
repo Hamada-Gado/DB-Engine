@@ -8,10 +8,7 @@ import org.jetbrains.annotations.NotNull;
 import java.io.*;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Hashtable;
-import java.util.Iterator;
-import java.util.Properties;
+import java.util.*;
 import java.util.stream.Collectors;
 
 
@@ -162,8 +159,8 @@ public class DBApp {
     }
 
 
-    public Iterator selectFromTable(SQLTerm[] arrSQLTerms,
-                                    String[] strarrOperators) throws DBAppException {
+    public Iterator<HashMap<String, Object>> selectFromTable(SQLTerm[] arrSQLTerms,
+                                             String[] strarrOperators) throws DBAppException {
 
         return null;
     }

@@ -14,6 +14,21 @@ public class Table implements Serializable {
         pages = new Vector<>();
     }
 
+    public static Table loadTable(String tableName) {
+        Path path = Paths.get((String) DBApp.db_config.get("DataPath"), tableName + ".ser");
+        Table table;
+        try {
+            FileInputStream fileIn = new FileInputStream(path.toAbsolutePath().toString());
+            ObjectInputStream in = new ObjectInputStream(fileIn);
+            table = (Table) in.readObject();
+            in.close();
+            fileIn.close();
+        } catch (IOException | ClassNotFoundException e) {
+            throw new RuntimeException(e);
+        }
+        return table;
+    }
+
     public void addPage(Page page) {
         if (page == null) {
             throw new RuntimeException("Page is null");
