@@ -41,24 +41,27 @@ public class Util {
         while (tableIterator.hasNext()) {
             Hashtable record = (Hashtable) tableIterator.next();
             Object value = record.get(sqlTerm._strColumnName);
-//            if (evaluate(value, sqlTerm._strOperator, sqlTerm._objValue)) {
-//                result.add(record);
-//            }
+            if (evaluate(value, sqlTerm._strOperator, sqlTerm._objValue)) {
+                result.add(record);
+            }
         }
 
-        return null;
+        return result;
     }
 
-//    TODO: Implement evaluate
-//    public static boolean evaluate(Object value, Object operator, Object objValue) {
-//        return switch (operator) {
-//            case ">" -> value > objValue;
-//            case ">=" -> value >= objValue;
-//            case "<" -> value < objValue;
-//            case "<=" -> value <= objValue;
-//            case "=" -> value.equals(objValue);
-//            case "!=" -> !value.equals(objValue);
-//            default -> throw new RuntimeException("Invalid operator");
-//        };
-//    }
+    public static boolean evaluate(Object value, Object operator, Object objValue) {
+        if (value == null || objValue == null) {
+            return false;
+        }
+
+        return switch ((String) operator) {
+            case "=" -> value.equals(objValue);
+            case "!=" -> !value.equals(objValue);
+            case ">" -> ((Comparable) value).compareTo(objValue) > 0;
+            case ">=" -> ((Comparable) value).compareTo(objValue) >= 0;
+            case "<" -> ((Comparable) value).compareTo(objValue) < 0;
+            case "<=" -> ((Comparable) value).compareTo(objValue) <= 0;
+            default -> throw new RuntimeException("Invalid operator");
+        };
+    }
 }
