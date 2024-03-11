@@ -1,19 +1,32 @@
 package DB;
 
+import org.jetbrains.annotations.NotNull;
+
 import java.io.*;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Iterator;
 import java.util.Vector;
 
-public class Table implements Serializable {
-    private String tableName;
-    private Vector<Path> pages;
+/**
+ * @author ahmedgado
+ */
+
+public class Table implements Iterable<Object>, Serializable {
+    private final String tableName;
+    private final Vector<Path> pages;
 
     public Table(String tableName) {
         this.tableName = tableName;
         pages = new Vector<>();
     }
 
+    /**
+     * Saves the table to a file
+     *
+     * @param tableName the table to save
+     * @return table deserialize the table from the file
+     */
     public static Table loadTable(String tableName) {
         Path path = Paths.get((String) DBApp.db_config.get("DataPath"), tableName + ".ser");
         Table table;
@@ -29,11 +42,11 @@ public class Table implements Serializable {
         return table;
     }
 
-    public void addPage(Page page) {
-        if (page == null) {
-            throw new RuntimeException("Page is null");
-        }
-
+    /**
+     * @param page the page to add
+     *             serialize the page and add its path to the table
+     */
+    public void addPage(@NotNull Page page) {
         Path path = Paths.get((String) DBApp.db_config.get("DataPath"), page.hashCode() + ".ser");
         try {
             FileOutputStream fileOut = new FileOutputStream(path.toAbsolutePath().toString());
@@ -47,11 +60,12 @@ public class Table implements Serializable {
         pages.add(path);
     }
 
-    public Page getPage(int index) throws DBAppException {
+    /**
+     * @param index the index of the page
+     * @return the name of the table
+     */
+    public Page getPage(int index) {
         Path path = pages.get(index);
-        if (path == null) {
-            throw new DBAppException("Page not found");
-        }
 
         Page page;
         try {
@@ -67,13 +81,62 @@ public class Table implements Serializable {
         return page;
     }
 
-    public Page getPage(String pageName) throws DBAppException {
+    /**
+     * @param pageName the name of the page
+     * @return the page
+     */
+    public Page getPage(String pageName) {
         Path path = Paths.get((String) DBApp.db_config.get("DataPath"), pageName + ".ser");
         int index = pages.indexOf(path);
         if (index == -1) {
-            throw new DBAppException("Page not found");
+            throw new RuntimeException("Page not found");
         } else {
             return getPage(index);
+        }
+    }
+
+    public @NotNull Iterator iterator() {
+        return new TableIterator();
+    }
+
+    private class TableIterator implements Iterator {
+        private int pageIndex;
+        private Page page;
+        private int recordIndex;
+
+        public TableIterator() {
+            pageIndex = 0;
+            recordIndex = 0;
+
+            page = null;
+            if (!pages.isEmpty()) {
+                page = getPage(pageIndex);
+            }
+        }
+
+        @Override
+        public boolean hasNext() {
+            return page != null && pageIndex < pages.size() && recordIndex < page.getRecords().size();
+        }
+
+        @Override
+        public Object next() {
+            if (!hasNext()) {
+                throw new RuntimeException("No more records");
+            }
+
+            Object record = page.getRecords().get(recordIndex);
+            recordIndex++;
+            if (recordIndex == page.getRecords().size()) {
+                pageIndex++;
+                recordIndex = 0;
+
+                page = null;
+                if (!pages.isEmpty()) {
+                    page = getPage(pageIndex);
+                }
+            }
+            return record;
         }
     }
 }
