@@ -70,13 +70,15 @@ public class DBApp {
     // be passed in htblColNameType
     // htblColNameValue will have the column name as key and the data
     // type as value
+    // Example:
+    // data/teacher/teacher.ser
+    // data/student/student.ser
+    // data/student/pages/31234124.ser
     public void createTable(String strTableName,
                             String strClusteringKeyColumn,
                             @NotNull Hashtable<String, String> htblColNameType) throws DBAppException {
-        // Example:
-        // data/teacher/teacher.ser
-        // data/student/student.ser
-        // data/student/pages/31234124.ser
+        // TODO: add validation for the input
+
         String metadataPath = db_config.getProperty("MetadataPath");
 
         // create a new table, and parent folder
@@ -158,10 +160,11 @@ public class DBApp {
     }
 
 
+    // select * from student where name = "John Noor" OR gpa = 1.5;
     public Iterator selectFromTable(SQLTerm[] arrSQLTerms,
                                     String[] strarrOperators) throws DBAppException {
 
-        // select * from student where name = "John Noor" OR gpa = 1.5;
+        // TODO: add validation for the input
 
         String tableName = arrSQLTerms[0]._strTableName;
 
