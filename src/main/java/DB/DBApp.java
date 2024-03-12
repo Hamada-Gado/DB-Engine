@@ -1,19 +1,15 @@
 package DB;
-/**
- * @author Wael Abouelsaadat
- */
 
 import org.jetbrains.annotations.NotNull;
 
 import java.io.*;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Hashtable;
-import java.util.Iterator;
-import java.util.Properties;
-import java.util.stream.Collectors;
+import java.util.*;
 
+/**
+ * @author Wael Abouelsaadat
+ */
 
 public class DBApp {
 
@@ -74,13 +70,15 @@ public class DBApp {
     // be passed in htblColNameType
     // htblColNameValue will have the column name as key and the data
     // type as value
+    // Example:
+    // data/teacher/teacher.ser
+    // data/student/student.ser
+    // data/student/pages/31234124.ser
     public void createTable(String strTableName,
                             String strClusteringKeyColumn,
                             @NotNull Hashtable<String, String> htblColNameType) throws DBAppException {
-        // Example:
-        // data/teacher/teacher.ser
-        // data/student/student.ser
-        // data/student/pages/31234124.ser
+        // TODO: add validation for the input
+
         String metadataPath = db_config.getProperty("MetadataPath");
 
         // create a new table, and parent folder
@@ -162,23 +160,39 @@ public class DBApp {
     }
 
 
+    // select * from student where name = "John Noor" OR gpa = 1.5;
     public Iterator selectFromTable(SQLTerm[] arrSQLTerms,
                                     String[] strarrOperators) throws DBAppException {
 
-        return null;
-    }
+        // TODO: add validation for the input
 
-    public ArrayList<String[]> getMetadata() {
-        ArrayList<String[]> metadata;
-        String metadataPath = db_config.getProperty("MetadataPath");
+        String tableName = arrSQLTerms[0]._strTableName;
 
-        try (BufferedReader br = new BufferedReader(new FileReader(metadataPath))) {
-            metadata = br.lines().map(line -> line.split(",")).collect(Collectors.toCollection(ArrayList::new));
-        } catch (IOException e) {
-            throw new RuntimeException(e);
+        Hashtable<String, Hashtable<String, String[]>> metadata = Util.getMetadata(tableName);
+
+        LinkedList<Hashtable<String, Object>> result = new LinkedList<>();
+
+        for (Object o : Table.loadTable(tableName)) {
+            Hashtable<String, Object> record = (Hashtable) o;
+
+            if (arrSQLTerms.length == 1) {
+                SQLTerm term = arrSQLTerms[0];
+                Object value = record.get(term._strColumnName);
+                if (Util.evaluateSqlTerm(value, term._strOperator, term._objValue)) {
+                    result.add(record);
+                }
+                continue;
+            }
+
+            LinkedList<Object> postfix = Util.toPostfix(record, arrSQLTerms, strarrOperators);
+            boolean res = Util.evaluatePostfix(postfix);
+            if (res) {
+                result.add(record);
+            }
         }
 
-        return metadata;
+
+        return result.iterator();
     }
 
     public static void test() {
@@ -190,7 +204,7 @@ public class DBApp {
             Hashtable htblColNameType = new Hashtable();
             htblColNameType.put("id", "java.lang.Integer");
             htblColNameType.put("name", "java.lang.String");
-            htblColNameType.put("gpa", "java.lang.double");
+            htblColNameType.put("gpa", "java.lang.Double");
             dbApp.createTable(strTableName, "id", htblColNameType);
             dbApp.createIndex(strTableName, "gpa", "gpaIndex");
 
