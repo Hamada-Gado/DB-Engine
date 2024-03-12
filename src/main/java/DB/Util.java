@@ -36,6 +36,12 @@ public class Util {
                         metadata.put(tName, new Hashtable<>());
                     }
 
+                    if (cKey.equals("True")) {
+                        if (!metadata.get(tName).containsKey("clusteringKey")) {
+                            metadata.get(tName).put("clusteringKey", new String[]{cName});
+                        }
+                    }
+
                     metadata.get(tName).put(cName, new String[]{cType, cKey, iName, iType});
                 }
             }
@@ -44,6 +50,47 @@ public class Util {
         }
 
         return metadata;
+    }
+
+    public static boolean validateTypes(String tableName, Hashtable<String, Object> colNameValue) throws DBAppException {
+        Hashtable<String, Hashtable<String, String[]>> metadata = getMetadata(tableName);
+        if (!metadata.containsKey(tableName)) {
+            throw new DBAppException("Table " + tableName + " does not exist");
+        }
+
+        for (String colName : colNameValue.keySet()) {
+            if (colName.equals("clusteringKey")) {
+                continue;
+            }
+
+            if (!metadata.get(tableName).containsKey(colName)) {
+                throw new DBAppException("Column " + colName + " does not exist in table " + tableName);
+            }
+
+            String[] colMetadata = metadata.get(tableName).get(colName);
+            String colType = colMetadata[0];
+
+            switch (colType) {
+                case "java.lang.Integer" -> {
+                    if (!(colNameValue.get(colName) instanceof Integer)) {
+                        throw new DBAppException("Invalid value for column " + colName + " of type " + colType);
+                    }
+                }
+                case "java.lang.String" -> {
+                    if (!(colNameValue.get(colName) instanceof String)) {
+                        throw new DBAppException("Invalid value for column " + colName + " of type " + colType);
+                    }
+                }
+                case "java.lang.Double" -> {
+                    if (!(colNameValue.get(colName) instanceof Double)) {
+                        throw new DBAppException("Invalid value for column " + colName + " of type " + colType);
+                    }
+                }
+                default -> throw new DBAppException("Invalid column type " + colType);
+            }
+        }
+
+        return true;
     }
 
     public static boolean evaluateSqlTerm(Object value, Object operator, Object objValue) {
@@ -91,7 +138,6 @@ public class Util {
 
     public static LinkedList<Object> toPostfix(Hashtable<String, Object> record,
                                                SQLTerm[] arrSQLTerms, String[] strarrOperators) {
-
         Stack<String> stack = new Stack<>();
         LinkedList<Object> postfix = new LinkedList<>();
         int j = 0;
@@ -119,7 +165,7 @@ public class Util {
         return postfix;
     }
 
-    public static boolean evaluatePostfix(LinkedList postfix) {
+    public static boolean evaluatePostfix(LinkedList<Object> postfix) {
         Stack<Boolean> stack = new Stack<>();
         for (Object token : postfix) {
             if (token instanceof Boolean) {
@@ -134,7 +180,6 @@ public class Util {
     }
 
     public static boolean evaluateBinaryOp(boolean value, String operator, boolean objValue) {
-
         return switch (operator) {
             case "AND" -> value && objValue;
             case "OR" -> value || objValue;
