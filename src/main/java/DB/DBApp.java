@@ -161,11 +161,32 @@ public class DBApp {
     public Iterator selectFromTable(SQLTerm[] arrSQLTerms,
                                     String[] strarrOperators) throws DBAppException {
 
-        // select * from student where name = "John Noor"
+        // select * from student where name = "John Noor" OR gpa = 1.5;
 
         String tableName = arrSQLTerms[0]._strTableName;
 
-        LinkedList<Vector<Hashtable<String, Object>>> result = new LinkedList<>();
+        Hashtable<String, Hashtable<String, String[]>> metadata = Util.getMetadata(tableName);
+
+        LinkedList<Hashtable<String, Object>> result = new LinkedList<>();
+
+        for (Object o : Table.loadTable(tableName)) {
+            Hashtable<String, Object> record = (Hashtable) o;
+
+            if (arrSQLTerms.length == 1) {
+                SQLTerm term = arrSQLTerms[0];
+                Object value = record.get(term._strColumnName);
+                if (Util.evaluateSqlTerm(value, term._strOperator, term._objValue)) {
+                    result.add(record);
+                }
+                continue;
+            }
+
+            LinkedList<Object> postfix = Util.toPostfix(record, arrSQLTerms, strarrOperators);
+            boolean res = Util.evaluatePostfix(postfix);
+            if (res) {
+                result.add(record);
+            }
+        }
 
         return result.iterator();
     }
