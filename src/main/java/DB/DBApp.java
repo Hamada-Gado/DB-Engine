@@ -74,10 +74,18 @@ public class DBApp {
     // data/teacher/teacher.ser
     // data/student/student.ser
     // data/student/pages/31234124.ser
-    public void createTable(String strTableName,
-                            String strClusteringKeyColumn,
+    public void createTable(@NotNull String strTableName,
+                            @NotNull String strClusteringKeyColumn,
                             @NotNull Hashtable<String, String> htblColNameType) throws DBAppException {
-        // TODO: add validation for the input
+
+        for (String colName : htblColNameType.keySet()) {
+            if (!htblColNameType.get(colName).equals("java.lang.Integer") &&
+                    !htblColNameType.get(colName).equals("java.lang.Double") &&
+                    !htblColNameType.get(colName).equals("java.lang.String")
+            ) {
+                throw new DBAppException("Invalid column type");
+            }
+        }
 
         String metadataPath = db_config.getProperty("MetadataPath");
 
@@ -160,34 +168,52 @@ public class DBApp {
     }
 
 
-    // select * from student where name = "John Noor" OR gpa = 1.5;
-    public Iterator selectFromTable(SQLTerm[] arrSQLTerms,
-                                    String[] strarrOperators) throws DBAppException {
+    // select * from student where name = "John Noor" OR gpa = 1.5 AND id = 2343432;
+    public Iterator selectFromTable(@NotNull SQLTerm[] arrSQLTerms,
+                                    @NotNull String[] strarrOperators) throws DBAppException {
 
-        // TODO: add validation for the input
+        if (arrSQLTerms.length == 0) {
+            throw new DBAppException("No SQL terms provided");
+        }
 
-        String tableName = arrSQLTerms[0]._strTableName;
+        if (arrSQLTerms.length != strarrOperators.length + 1) {
+            throw new DBAppException("Invalid number of operators");
+        }
 
-        Hashtable<String, Hashtable<String, String[]>> metadata = Util.getMetadata(tableName);
-
-        LinkedList<Hashtable<String, Object>> result = new LinkedList<>();
-
-        for (Object o : Table.loadTable(tableName)) {
-            Hashtable<String, Object> record = (Hashtable) o;
-
-            if (arrSQLTerms.length == 1) {
-                SQLTerm term = arrSQLTerms[0];
-                Object value = record.get(term._strColumnName);
-                if (Util.evaluateSqlTerm(value, term._strOperator, term._objValue)) {
-                    result.add(record);
-                }
-                continue;
+        for (SQLTerm term : arrSQLTerms) {
+            if (!term._strOperator.equals("=") &&
+                    !term._strOperator.equals("!=") &&
+                    !term._strOperator.equals(">") &&
+                    !term._strOperator.equals(">=") &&
+                    !term._strOperator.equals("<") &&
+                    !term._strOperator.equals("<=")
+            ) {
+                throw new DBAppException("Invalid operator");
             }
 
-            LinkedList<Object> postfix = Util.toPostfix(record, arrSQLTerms, strarrOperators);
-            boolean res = Util.evaluatePostfix(postfix);
-            if (res) {
-                result.add(record);
+            Util.validateTypes(term._strColumnName, new Hashtable<>(Map.of(term._strColumnName, term._objValue)));
+        }
+
+        String tableName = arrSQLTerms[0]._strTableName;
+        LinkedList<Hashtable<String, Object>> result = new LinkedList<>();
+
+        for (Page p : Table.loadTable(tableName)) {
+            for (Hashtable<String, Object> record : p) {
+
+                if (arrSQLTerms.length == 1) {
+                    SQLTerm term = arrSQLTerms[0];
+                    Object value = record.get(term._strColumnName);
+                    if (Util.evaluateSqlTerm(value, term._strOperator, term._objValue)) {
+                        result.add(record);
+                    }
+                    continue;
+                }
+
+                LinkedList<Object> postfix = Util.toPostfix(record, arrSQLTerms, strarrOperators);
+                boolean res = Util.evaluatePostfix(postfix);
+                if (res) {
+                    result.add(record);
+                }
             }
         }
 
