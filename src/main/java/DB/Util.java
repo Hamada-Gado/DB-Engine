@@ -11,6 +11,27 @@ import java.util.*;
  */
 
 public class Util {
+
+    /**
+     *
+     * @param tableName
+     * @return
+     *
+     * Example:
+     * metadata = {
+     *  "table1": {
+     *            "clusteringKey": ["id"],
+     *            "id": ["java.lang.Integer", "True", "index1", "BTree"],
+     *            "name": ["java.lang.String", "False", "index2", "RTree"]
+     *            },
+     *  "table2": {
+     *            "clusteringKey": ["id"],
+     *            "id": ["java.lang.Integer", "True", "index1", "BTree"],
+     *            "name": ["java.lang.String", "False", "index2", "RTree"]
+     *            }
+     *  }
+     *
+     */
     public static Hashtable<String, Hashtable<String, String[]>> getMetadata(String tableName) {
         if (DBApp.db_config == null) {
             throw new RuntimeException("DBApp not initialized");
@@ -52,7 +73,7 @@ public class Util {
         return metadata;
     }
 
-    public static boolean validateTypes(String tableName, Hashtable<String, Object> colNameValue) throws DBAppException {
+    public static void validateTypes(String tableName, Hashtable<String, Object> colNameValue) throws DBAppException {
         Hashtable<String, Hashtable<String, String[]>> metadata = getMetadata(tableName);
         if (!metadata.containsKey(tableName)) {
             throw new DBAppException("Table " + tableName + " does not exist");
@@ -90,7 +111,6 @@ public class Util {
             }
         }
 
-        return true;
     }
 
     public static boolean evaluateSqlTerm(Object value, Object operator, Object objValue) {
