@@ -140,6 +140,8 @@ public class DBApp {
     // htblColNameValue must include a value for the primary key
     public void insertIntoTable(String strTableName,
                                 Hashtable<String, Object> htblColNameValue) throws DBAppException {
+        //ToDo: validation
+
         // try{
         Hashtable<String, Hashtable<String, String[]>> metaData = Util.getMetadata(strTableName);
         if (metaData == null) {
@@ -176,8 +178,28 @@ public class DBApp {
                 }
             }
             //}
-
-
+        }
+        int pageNo = 0;//Placeholder
+        int recordNo = 0;//Placeholder
+        for (int i = pageNo; i <= currentTable.pagesCount(); i++) {
+            if (i < currentTable.pagesCount()) {
+                if (!currentTable.getPage(i).isFull()) {
+                    // e.g page size is 10,but currently it contains 9 records.
+                    // If you want to insert into position 4 (if we assume recordNo is the one before where you want to insert then it's 3)
+                    // you have to temporarily remove records 4 to 9 to be able to insert
+                    currentTable.getPage(i).getRecords().insertElementAt(htblColNameValue, recordNo + 1);
+                    break;
+                }
+                else {
+                    currentTable.getPage(i).getRecords().insertElementAt(htblColNameValue, recordNo + 1);
+                    htblColNameValue = currentTable.getPage(i).getRecords().remove(currentTable.getPage(i).getMax());
+                }
+            }
+            else{
+                Page newPage = new Page((int) DBApp.db_config.get("MaximumRowsCountinPage"));
+                newPage.getRecords().add(htblColNameValue);
+                currentTable.addPage(newPage);
+            }
         }
 
 

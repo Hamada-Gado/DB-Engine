@@ -20,6 +20,10 @@ public class Page implements Iterable<Hashtable<String, Object>>, Serializable {
         this.records = new Vector<>();
     }
 
+    public int getMax(){
+        return max;
+    }
+
     public boolean isFull() {
         return records.size() == max;
     }

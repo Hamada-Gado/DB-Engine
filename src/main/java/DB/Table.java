@@ -21,6 +21,10 @@ public class Table implements Iterable<Page>, Serializable {
         pages = new Vector<>();
     }
 
+    public int pagesCount(){
+        return pages.size();
+    }
+
     public int noOfRecords(){
         return (pages.size()-1)*(int)DBApp.db_config.get("MaximumRowsCountinPage") + getPage(pages.size()-1).getRecords().size();
     }
