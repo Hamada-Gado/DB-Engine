@@ -13,9 +13,9 @@ import java.util.*;
 
 public class DBApp {
 
-    static final String configPath = "src/main/resources/DBApp.config";
-    static final String metadataHeader = "Table Name,Column Name,Column Type,ClusteringKey,IndexName,IndexType\n";
-    static Properties db_config;
+    public static final String configPath = "src/main/resources/DBApp.config";
+    public static final String metadataHeader = "Table Name,Column Name,Column Type,ClusteringKey,IndexName,IndexType\n";
+    private static Properties db_config;
 
     public DBApp() {
         this.init();
@@ -44,7 +44,7 @@ public class DBApp {
         }
 
         // Create the metadata folder if it doesn't exist
-        File metadataFile = new File(db_config.getProperty("MetadataPath"));
+        File metadataFile = new File(getDb_config().getProperty("MetadataPath"));
         if (!metadataFile.exists()) {
             try {
                 boolean newFile = metadataFile.createNewFile();
@@ -73,7 +73,7 @@ public class DBApp {
     // Example:
     // data/teacher/teacher.ser
     // data/student/student.ser
-    // data/student/pages/31234124.ser
+    // data/student/31234124.ser
     public void createTable(@NotNull String strTableName,
                             @NotNull String strClusteringKeyColumn,
                             @NotNull Hashtable<String, String> htblColNameType) throws DBAppException {
@@ -87,11 +87,11 @@ public class DBApp {
             }
         }
 
-        String metadataPath = db_config.getProperty("MetadataPath");
+        String metadataPath = getDb_config().getProperty("MetadataPath");
 
         // create a new table, and parent folder
         Table table = new Table(strTableName);
-        Path tablePath = Paths.get((String) db_config.get("DataPath"), strTableName);
+        Path tablePath = Paths.get((String) getDb_config().get("DataPath"), strTableName);
         File file = new File(tablePath.toAbsolutePath().toString());
         if (!file.exists()) {
             boolean newDir = file.mkdirs();
@@ -114,7 +114,7 @@ public class DBApp {
         }
 
         // save table to disk
-        Path path = Paths.get((String) db_config.get("DataPath"), strTableName, strTableName + ".ser");
+        Path path = Paths.get((String) getDb_config().get("DataPath"), strTableName, strTableName + ".ser");
         try {
             FileOutputStream fileOut = new FileOutputStream(path.toAbsolutePath().toString());
             ObjectOutputStream out = new ObjectOutputStream(fileOut);
@@ -219,6 +219,14 @@ public class DBApp {
 
 
         return result.iterator();
+    }
+
+    public static Properties getDb_config() {
+        if (db_config == null) {
+            throw new RuntimeException("DBApp not initialized");
+        }
+
+        return db_config;
     }
 
     public static void test() {

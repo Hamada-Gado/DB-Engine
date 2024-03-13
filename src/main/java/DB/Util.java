@@ -12,12 +12,8 @@ import java.util.*;
 
 public class Util {
     public static Hashtable<String, Hashtable<String, String[]>> getMetadata(String tableName) {
-        if (DBApp.db_config == null) {
-            throw new RuntimeException("DBApp not initialized");
-        }
-
         Hashtable<String, Hashtable<String, String[]>> metadata = new Hashtable<>();
-        String metadataPath = DBApp.db_config.getProperty("MetadataPath");
+        String metadataPath = DBApp.getDb_config().getProperty("MetadataPath");
 
         try (BufferedReader br = new BufferedReader(new FileReader(metadataPath))) {
             br.readLine(); // Skip the header
