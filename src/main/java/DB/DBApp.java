@@ -122,9 +122,40 @@ public class DBApp {
     public void createIndex(String strTableName,
                             String strColName,
                             String strIndexName) throws DBAppException {
-
-        throw new DBAppException("not implemented yet");
+    // Load the table from the disk
+    Path path = Paths.get((String) db_config.get("DataPath"), strTableName, strTableName + ".ser");
+    Table table;
+    try {
+        FileInputStream fileIn = new FileInputStream(path.toAbsolutePath().toString());
+        ObjectInputStream in = new ObjectInputStream(fileIn);
+        table = (Table) in.readObject();
+        in.close();
+        fileIn.close();
+    } catch (IOException | ClassNotFoundException e) {
+        throw new RuntimeException(e);
     }
+
+    // Create a new B+ tree
+    bplustree bpt = new bplustree(Integer.parseInt(db_config.getProperty("NodeSize")));
+
+    // Iterate over all the records in the table
+    for (Record record : table.getRecords()) {
+        // Insert the value of the column and the record's primary key into the B+ tree
+        bpt.insert((int) record.get(strColName), (int) record.get(table.getClusteringKey()));
+    }
+
+    // Save the B+ tree to the disk
+    Path indexPath = Paths.get((String) db_config.get("DataPath"), strTableName, strIndexName + ".ser");
+    try {
+        FileOutputStream fileOut = new FileOutputStream(indexPath.toAbsolutePath().toString());
+        ObjectOutputStream out = new ObjectOutputStream(fileOut);
+        out.writeObject(bpt);
+        out.close();
+        fileOut.close();
+    } catch (IOException e) {
+        throw new RuntimeException(e);
+    }
+}
 
 
     // following method inserts one row only.
