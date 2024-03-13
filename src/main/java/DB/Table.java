@@ -12,7 +12,7 @@ import java.util.Vector;
  * @author ahmedgado
  */
 
-public class Table implements Iterable<Object>, Serializable {
+public class Table implements Iterable<Page>, Serializable {
     private final String tableName;
     private final Vector<Path> pages;
 
@@ -99,18 +99,16 @@ public class Table implements Iterable<Object>, Serializable {
         }
     }
 
-    public @NotNull Iterator iterator() {
+    public @NotNull Iterator<Page> iterator() {
         return new TableIterator();
     }
 
-    private class TableIterator implements Iterator {
+    private class TableIterator implements Iterator<Page> {
         private int pageIndex;
         private Page page;
-        private int recordIndex;
 
         public TableIterator() {
             pageIndex = 0;
-            recordIndex = 0;
 
             page = null;
             if (!pages.isEmpty()) {
@@ -120,27 +118,22 @@ public class Table implements Iterable<Object>, Serializable {
 
         @Override
         public boolean hasNext() {
-            return page != null && pageIndex < pages.size() && recordIndex < page.getRecords().size();
+            return page != null && pageIndex < pages.size();
         }
 
         @Override
-        public Object next() {
+        public Page next() {
             if (!hasNext()) {
                 throw new RuntimeException("No more records");
             }
 
-            Object record = page.getRecords().get(recordIndex);
-            recordIndex++;
-            if (recordIndex == page.getRecords().size()) {
-                pageIndex++;
-                recordIndex = 0;
-
-                page = null;
-                if (!pages.isEmpty()) {
-                    page = getPage(pageIndex);
-                }
+            pageIndex++;
+            page = null;
+            if (pageIndex < pages.size()) {
+                page = getPage(pageIndex);
             }
-            return record;
+
+            return page;
         }
     }
 }
