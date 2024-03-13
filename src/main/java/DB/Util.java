@@ -13,24 +13,20 @@ import java.util.*;
 public class Util {
 
     /**
-     *
      * @param tableName
-     * @return
-     *
-     * Example:
+     * @return Example:
      * metadata = {
-     *  "table1": {
-     *            "clusteringKey": ["id"],
-     *            "id": ["java.lang.Integer", "True", "index1", "BTree"],
-     *            "name": ["java.lang.String", "False", "index2", "RTree"]
-     *            },
-     *  "table2": {
-     *            "clusteringKey": ["id"],
-     *            "id": ["java.lang.Integer", "True", "index1", "BTree"],
-     *            "name": ["java.lang.String", "False", "index2", "RTree"]
-     *            }
-     *  }
-     *
+     * "table1": {
+     * "clusteringKey": ["id"],
+     * "id": ["java.lang.Integer", "True", "index1", "BTree"],
+     * "name": ["java.lang.String", "False", "index2", "RTree"]
+     * },
+     * "table2": {
+     * "clusteringKey": ["id"],
+     * "id": ["java.lang.Integer", "True", "index1", "BTree"],
+     * "name": ["java.lang.String", "False", "index2", "RTree"]
+     * }
+     * }
      */
     public static Hashtable<String, Hashtable<String, String[]>> getMetadata(String tableName) {
         Hashtable<String, Hashtable<String, String[]>> metadata = new Hashtable<>();
@@ -67,6 +63,82 @@ public class Util {
         }
 
         return metadata;
+    }
+
+    /**
+     * Use binary search to find the page number of the record with the given clustering key
+     *
+     * @return a pair of (pageNumber, recordPos, found)
+     * <p>
+     * Example:
+     * recordPos = [0, 1, 0]
+     */
+    public static int[] getRecordPos(String tableName, String clusteringKey,
+                                     Comparable clusteringKeyValue) throws DBAppException {
+        int[] recordPos = new int[3];
+        Table table = Table.loadTable(tableName);
+
+        if (table.getPages().isEmpty()) {
+            return recordPos;
+        }
+
+        int leftPage = 0;
+        int rightPage = table.getPages().size() - 1;
+        int pageNumber;
+
+        while (true) {
+            if (leftPage > rightPage) {
+                pageNumber = rightPage;
+                break;
+            }
+
+            int midPage = (leftPage + rightPage) / 2;
+            Comparable midValue = table.getClusteringKeyMin().get(midPage);
+
+            if (midValue.compareTo(clusteringKeyValue) <= 0) {
+                // what if midValue in page of clusteringKeyValue
+                // what if midValue is the last value in the page?
+
+                // [0, 3, 5, 7, 9] , 6
+                //  L  M        R  , 3 < 6
+                //        L  M  R  , 7 > 6
+                //        R  L
+                // is this sequence always true? need more testing
+
+
+                leftPage = midPage + 1;
+            } else {
+                rightPage = midPage - 1;
+            }
+        }
+
+        Page page = table.getPage(pageNumber);
+        int leftRecord = 0;
+        int rightRecord = page.getRecords().size() - 1;
+
+        while (true) {
+            int midRecord = (leftRecord + rightRecord) / 2;
+            Hashtable<String, Object> record = page.getRecords().get(midRecord);
+            Comparable midValue = (Comparable) record.get(clusteringKey);
+
+            if (midValue.equals(clusteringKeyValue)) {
+                recordPos[0] = pageNumber;
+                recordPos[1] = midRecord;
+                recordPos[2] = 0;
+
+                return recordPos;
+            } else if (leftRecord > rightRecord) {
+                recordPos[0] = pageNumber;
+                recordPos[1] = rightRecord;
+                recordPos[2] = -1;
+
+                return recordPos;
+            } else if (midValue.compareTo(clusteringKeyValue) < 0) {
+                leftRecord = midRecord + 1;
+            } else {
+                rightRecord = midRecord - 1;
+            }
+        }
     }
 
     public static void validateTypes(String tableName, Hashtable<String, Object> colNameValue) throws DBAppException {

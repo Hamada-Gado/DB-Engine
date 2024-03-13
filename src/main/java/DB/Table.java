@@ -15,10 +15,24 @@ import java.util.Vector;
 public class Table implements Iterable<Page>, Serializable {
     private final String tableName;
     private final Vector<Path> pages;
+    private final Vector<Comparable> clusteringKeyMin;
 
     public Table(String tableName) {
         this.tableName = tableName;
         pages = new Vector<>();
+        clusteringKeyMin = new Vector<>();
+    }
+
+    public String getTableName() {
+        return tableName;
+    }
+
+    public Vector<Path> getPages() {
+        return pages;
+    }
+
+    public Vector<Comparable> getClusteringKeyMin() {
+        return clusteringKeyMin;
     }
 
     /**
