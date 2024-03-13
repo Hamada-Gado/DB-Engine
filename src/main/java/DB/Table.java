@@ -28,7 +28,7 @@ public class Table implements Iterable<Page>, Serializable {
      * @return table deserialize the table from the file
      */
     public static Table loadTable(String tableName) {
-        Path path = Paths.get((String) DBApp.db_config.get("DataPath"), tableName + ".ser");
+        Path path = Paths.get((String) DBApp.getDb_config().get("DataPath"), tableName + ".ser");
         Table table;
         try {
             FileInputStream fileIn = new FileInputStream(path.toAbsolutePath().toString());
@@ -47,7 +47,7 @@ public class Table implements Iterable<Page>, Serializable {
      *             serialize the page and add its path to the table
      */
     public void addPage(@NotNull Page page) {
-        Path path = Paths.get((String) DBApp.db_config.get("DataPath"), page.hashCode() + ".ser");
+        Path path = Paths.get((String) DBApp.getDb_config().get("DataPath"), page.hashCode() + ".ser");
         try {
             FileOutputStream fileOut = new FileOutputStream(path.toAbsolutePath().toString());
             ObjectOutputStream out = new ObjectOutputStream(fileOut);
@@ -86,7 +86,7 @@ public class Table implements Iterable<Page>, Serializable {
      * @return the page
      */
     public Page getPage(String pageName) {
-        Path path = Paths.get((String) DBApp.db_config.get("DataPath"), pageName + ".ser");
+        Path path = Paths.get((String) DBApp.getDb_config().get("DataPath"), pageName + ".ser");
         int index = pages.indexOf(path);
         if (index == -1) {
             throw new RuntimeException("Page not found");
