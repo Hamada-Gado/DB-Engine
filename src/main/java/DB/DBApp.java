@@ -70,13 +70,23 @@ public class DBApp {
     // be passed in htblColNameType
     // htblColNameValue will have the column name as key and the data
     // type as value
-    public void createTable(String strTableName,
-                            String strClusteringKeyColumn,
+    // Example:
+    // data/teacher/teacher.ser
+    // data/student/student.ser
+    // data/student/pages/31234124.ser
+    public void createTable(@NotNull String strTableName,
+                            @NotNull String strClusteringKeyColumn,
                             @NotNull Hashtable<String, String> htblColNameType) throws DBAppException {
-        // Example:
-        // data/teacher/teacher.ser
-        // data/student/student.ser
-        // data/student/pages/31234124.ser
+
+        for (String colName : htblColNameType.keySet()) {
+            if (!htblColNameType.get(colName).equals("java.lang.Integer") &&
+                    !htblColNameType.get(colName).equals("java.lang.Double") &&
+                    !htblColNameType.get(colName).equals("java.lang.String")
+            ) {
+                throw new DBAppException("Invalid column type");
+            }
+        }
+
         String metadataPath = db_config.getProperty("MetadataPath");
 
         // create a new table, and parent folder
@@ -213,14 +223,57 @@ public class DBApp {
     }
 
 
-    public Iterator selectFromTable(SQLTerm[] arrSQLTerms,
-                                    String[] strarrOperators) throws DBAppException {
+    // select * from student where name = "John Noor" OR gpa = 1.5;
+    public Iterator selectFromTable(@NotNull SQLTerm[] arrSQLTerms,
+                                    @NotNull String[] strarrOperators) throws DBAppException {
 
-        // select * from student where name = "John Noor"
+        if (arrSQLTerms.length == 0) {
+            throw new DBAppException("No SQL terms provided");
+        }
+
+        if (arrSQLTerms.length != strarrOperators.length + 1) {
+            throw new DBAppException("Invalid number of operators");
+        }
+
+        for (SQLTerm term : arrSQLTerms) {
+            if (!term._strOperator.equals("=") &&
+                    !term._strOperator.equals("!=") &&
+                    !term._strOperator.equals(">") &&
+                    !term._strOperator.equals(">=") &&
+                    !term._strOperator.equals("<") &&
+                    !term._strOperator.equals("<=")
+            ) {
+                throw new DBAppException("Invalid operator");
+            }
+
+            Util.validateTypes(term._strColumnName, new Hashtable<>(Map.of(term._strColumnName, term._objValue)));
+        }
 
         String tableName = arrSQLTerms[0]._strTableName;
 
-        LinkedList<Vector<Hashtable<String, Object>>> result = new LinkedList<>();
+        Hashtable<String, Hashtable<String, String[]>> metadata = Util.getMetadata(tableName);
+
+        LinkedList<Hashtable<String, Object>> result = new LinkedList<>();
+
+        for (Object o : Table.loadTable(tableName)) {
+            Hashtable<String, Object> record = (Hashtable) o;
+
+            if (arrSQLTerms.length == 1) {
+                SQLTerm term = arrSQLTerms[0];
+                Object value = record.get(term._strColumnName);
+                if (Util.evaluateSqlTerm(value, term._strOperator, term._objValue)) {
+                    result.add(record);
+                }
+                continue;
+            }
+
+            LinkedList<Object> postfix = Util.toPostfix(record, arrSQLTerms, strarrOperators);
+            boolean res = Util.evaluatePostfix(postfix);
+            if (res) {
+                result.add(record);
+            }
+        }
+
 
         return result.iterator();
     }
