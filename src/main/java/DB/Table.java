@@ -35,6 +35,70 @@ public class Table implements Iterable<Page>, Serializable {
         return clusteringKeyMin;
     }
 
+    public void updateTable() {
+        Path path = Paths.get((String) DBApp.getDb_config().get("DataPath"), tableName + ".ser");
+        try (
+                FileOutputStream fileOut = new FileOutputStream(path.toAbsolutePath().toString());
+                ObjectOutputStream out = new ObjectOutputStream(fileOut)) {
+            out.writeObject(this);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+
+    /**
+     * @param page the page to add
+     *             <p>
+     *             serialize the page and add its path to the table
+     */
+    public void addPage(@NotNull Page page) {
+        Path path = Paths.get((String) DBApp.getDb_config().get("DataPath"), tableName, page.hashCode() + ".ser");
+        try (
+                FileOutputStream fileOut = new FileOutputStream(path.toAbsolutePath().toString());
+                ObjectOutputStream out = new ObjectOutputStream(fileOut)) {
+            out.writeObject(page);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
+        pages.add(path);
+        updateTable();
+    }
+
+    /**
+     * @param index the index of the page
+     * @return the name of the table
+     */
+    public Page getPage(int index) {
+        Path path = pages.get(index);
+
+        Page page;
+        try (
+                FileInputStream fileIn = new FileInputStream(path.toAbsolutePath().toString());
+                ObjectInputStream in = new ObjectInputStream(fileIn)) {
+            page = (Page) in.readObject();
+        } catch (IOException | ClassNotFoundException e) {
+            throw new RuntimeException(e);
+        }
+
+        return page;
+    }
+
+    /**
+     * @param pageName the name of the page
+     * @return the page
+     */
+    public Page getPage(String pageName) {
+        Path path = Paths.get((String) DBApp.getDb_config().get("DataPath"), tableName, pageName + ".ser");
+        int index = pages.indexOf(path);
+        if (index == -1) {
+            throw new RuntimeException("Page not found");
+        } else {
+            return getPage(index);
+        }
+    }
+
     /**
      * Saves the table to a file
      *
@@ -54,59 +118,6 @@ public class Table implements Iterable<Page>, Serializable {
             throw new RuntimeException(e);
         }
         return table;
-    }
-
-    /**
-     * @param page the page to add
-     *             serialize the page and add its path to the table
-     */
-    public void addPage(@NotNull Page page) {
-        Path path = Paths.get((String) DBApp.getDb_config().get("DataPath"), page.hashCode() + ".ser");
-        try {
-            FileOutputStream fileOut = new FileOutputStream(path.toAbsolutePath().toString());
-            ObjectOutputStream out = new ObjectOutputStream(fileOut);
-            out.writeObject(page);
-            out.close();
-            fileOut.close();
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-        pages.add(path);
-    }
-
-    /**
-     * @param index the index of the page
-     * @return the name of the table
-     */
-    public Page getPage(int index) {
-        Path path = pages.get(index);
-
-        Page page;
-        try {
-            FileInputStream fileIn = new FileInputStream(path.toAbsolutePath().toString());
-            ObjectInputStream in = new ObjectInputStream(fileIn);
-            page = (Page) in.readObject();
-            in.close();
-            fileIn.close();
-        } catch (IOException | ClassNotFoundException e) {
-            throw new RuntimeException(e);
-        }
-
-        return page;
-    }
-
-    /**
-     * @param pageName the name of the page
-     * @return the page
-     */
-    public Page getPage(String pageName) {
-        Path path = Paths.get((String) DBApp.getDb_config().get("DataPath"), pageName + ".ser");
-        int index = pages.indexOf(path);
-        if (index == -1) {
-            throw new RuntimeException("Page not found");
-        } else {
-            return getPage(index);
-        }
     }
 
     public @NotNull Iterator<Page> iterator() {
