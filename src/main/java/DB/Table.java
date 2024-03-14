@@ -1,21 +1,34 @@
 package DB;
 
+import org.jetbrains.annotations.NotNull;
+
 import java.io.*;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Iterator;
 import java.util.Vector;
 
-public class Table implements Serializable {
-    private String tableName;
-    private Vector<Path> pages;
+/**
+ * @author ahmedgado
+ */
+
+public class Table implements Iterable<Page>, Serializable {
+    private final String tableName;
+    private final Vector<Path> pages;
 
     public Table(String tableName) {
         this.tableName = tableName;
         pages = new Vector<>();
     }
 
+    /**
+     * Saves the table to a file
+     *
+     * @param tableName the table to save
+     * @return table deserialize the table from the file
+     */
     public static Table loadTable(String tableName) {
-        Path path = Paths.get((String) DBApp.db_config.get("DataPath"), tableName + ".ser");
+        Path path = Paths.get((String) DBApp.getDb_config().get("DataPath"), tableName + ".ser");
         Table table;
         try {
             FileInputStream fileIn = new FileInputStream(path.toAbsolutePath().toString());
@@ -29,12 +42,12 @@ public class Table implements Serializable {
         return table;
     }
 
-    public void addPage(Page page) {
-        if (page == null) {
-            throw new RuntimeException("Page is null");
-        }
-
-        Path path = Paths.get((String) DBApp.db_config.get("DataPath"), page.hashCode() + ".ser");
+    /**
+     * @param page the page to add
+     *             serialize the page and add its path to the table
+     */
+    public void addPage(@NotNull Page page) {
+        Path path = Paths.get((String) DBApp.getDb_config().get("DataPath"), page.hashCode() + ".ser");
         try {
             FileOutputStream fileOut = new FileOutputStream(path.toAbsolutePath().toString());
             ObjectOutputStream out = new ObjectOutputStream(fileOut);
@@ -47,11 +60,12 @@ public class Table implements Serializable {
         pages.add(path);
     }
 
-    public Page getPage(int index) throws DBAppException {
+    /**
+     * @param index the index of the page
+     * @return the name of the table
+     */
+    public Page getPage(int index) {
         Path path = pages.get(index);
-        if (path == null) {
-            throw new DBAppException("Page not found");
-        }
 
         Page page;
         try {
@@ -67,13 +81,55 @@ public class Table implements Serializable {
         return page;
     }
 
-    public Page getPage(String pageName) throws DBAppException {
-        Path path = Paths.get((String) DBApp.db_config.get("DataPath"), pageName + ".ser");
+    /**
+     * @param pageName the name of the page
+     * @return the page
+     */
+    public Page getPage(String pageName) {
+        Path path = Paths.get((String) DBApp.getDb_config().get("DataPath"), pageName + ".ser");
         int index = pages.indexOf(path);
         if (index == -1) {
-            throw new DBAppException("Page not found");
+            throw new RuntimeException("Page not found");
         } else {
             return getPage(index);
+        }
+    }
+
+    public @NotNull Iterator<Page> iterator() {
+        return new TableIterator();
+    }
+
+    private class TableIterator implements Iterator<Page> {
+        private int pageIndex;
+        private Page page;
+
+        public TableIterator() {
+            pageIndex = 0;
+
+            page = null;
+            if (!pages.isEmpty()) {
+                page = getPage(pageIndex);
+            }
+        }
+
+        @Override
+        public boolean hasNext() {
+            return page != null && pageIndex < pages.size();
+        }
+
+        @Override
+        public Page next() {
+            if (!hasNext()) {
+                throw new RuntimeException("No more records");
+            }
+
+            pageIndex++;
+            page = null;
+            if (pageIndex < pages.size()) {
+                page = getPage(pageIndex);
+            }
+
+            return page;
         }
     }
 }

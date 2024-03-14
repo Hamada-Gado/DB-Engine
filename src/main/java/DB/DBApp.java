@@ -1,7 +1,4 @@
 package DB;
-/**
- * @author Wael Abouelsaadat
- */
 
 import org.jetbrains.annotations.NotNull;
 
@@ -9,14 +6,16 @@ import java.io.*;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
-import java.util.stream.Collectors;
 
+/**
+ * @author Wael Abouelsaadat
+ */
 
 public class DBApp {
 
-    static final String configPath = "src/main/resources/DBApp.config";
-    static final String metadataHeader = "Table Name,Column Name,Column Type,ClusteringKey,IndexName,IndexType\n";
-    static Properties db_config;
+    public static final String configPath = "src/main/resources/DBApp.config";
+    public static final String metadataHeader = "Table Name,Column Name,Column Type,ClusteringKey,IndexName,IndexType\n";
+    private static Properties db_config;
 
     public DBApp() {
         this.init();
@@ -45,7 +44,7 @@ public class DBApp {
         }
 
         // Create the metadata folder if it doesn't exist
-        File metadataFile = new File(db_config.getProperty("MetadataPath"));
+        File metadataFile = new File(getDb_config().getProperty("MetadataPath"));
         if (!metadataFile.exists()) {
             try {
                 boolean newFile = metadataFile.createNewFile();
@@ -71,18 +70,28 @@ public class DBApp {
     // be passed in htblColNameType
     // htblColNameValue will have the column name as key and the data
     // type as value
-    public void createTable(String strTableName,
-                            String strClusteringKeyColumn,
+    // Example:
+    // data/teacher/teacher.ser
+    // data/student/student.ser
+    // data/student/31234124.ser
+    public void createTable(@NotNull String strTableName,
+                            @NotNull String strClusteringKeyColumn,
                             @NotNull Hashtable<String, String> htblColNameType) throws DBAppException {
-        // Example:
-        // data/teacher/teacher.ser
-        // data/student/student.ser
-        // data/student/pages/31234124.ser
-        String metadataPath = db_config.getProperty("MetadataPath");
+
+        for (String colName : htblColNameType.keySet()) {
+            if (!htblColNameType.get(colName).equals("java.lang.Integer") &&
+                    !htblColNameType.get(colName).equals("java.lang.Double") &&
+                    !htblColNameType.get(colName).equals("java.lang.String")
+            ) {
+                throw new DBAppException("Invalid column type");
+            }
+        }
+
+        String metadataPath = getDb_config().getProperty("MetadataPath");
 
         // create a new table, and parent folder
         Table table = new Table(strTableName);
-        Path tablePath = Paths.get((String) db_config.get("DataPath"), strTableName);
+        Path tablePath = Paths.get((String) getDb_config().get("DataPath"), strTableName);
         File file = new File(tablePath.toAbsolutePath().toString());
         if (!file.exists()) {
             boolean newDir = file.mkdirs();
@@ -105,7 +114,7 @@ public class DBApp {
         }
 
         // save table to disk
-        Path path = Paths.get((String) db_config.get("DataPath"), strTableName, strTableName + ".ser");
+        Path path = Paths.get((String) getDb_config().get("DataPath"), strTableName, strTableName + ".ser");
         try {
             FileOutputStream fileOut = new FileOutputStream(path.toAbsolutePath().toString());
             ObjectOutputStream out = new ObjectOutputStream(fileOut);
@@ -190,23 +199,65 @@ public class DBApp {
     }
 
 
-    public Iterator<HashMap<String, Object>> selectFromTable(SQLTerm[] arrSQLTerms,
-                                             String[] strarrOperators) throws DBAppException {
+    // select * from student where name = "John Noor" OR gpa = 1.5 AND id = 2343432;
+    public Iterator selectFromTable(@NotNull SQLTerm[] arrSQLTerms,
+                                    @NotNull String[] strarrOperators) throws DBAppException {
 
-        return null;
-    }
-
-    public ArrayList<String[]> getMetadata() {
-        ArrayList<String[]> metadata;
-        String metadataPath = db_config.getProperty("MetadataPath");
-
-        try (BufferedReader br = new BufferedReader(new FileReader(metadataPath))) {
-            metadata = br.lines().map(line -> line.split(",")).collect(Collectors.toCollection(ArrayList::new));
-        } catch (IOException e) {
-            throw new RuntimeException(e);
+        if (arrSQLTerms.length == 0) {
+            throw new DBAppException("No SQL terms provided");
         }
 
-        return metadata;
+        if (arrSQLTerms.length != strarrOperators.length + 1) {
+            throw new DBAppException("Invalid number of operators");
+        }
+
+        for (SQLTerm term : arrSQLTerms) {
+            if (!term._strOperator.equals("=") &&
+                    !term._strOperator.equals("!=") &&
+                    !term._strOperator.equals(">") &&
+                    !term._strOperator.equals(">=") &&
+                    !term._strOperator.equals("<") &&
+                    !term._strOperator.equals("<=")
+            ) {
+                throw new DBAppException("Invalid operator");
+            }
+
+            Util.validateTypes(term._strColumnName, new Hashtable<>(Map.of(term._strColumnName, term._objValue)));
+        }
+
+        String tableName = arrSQLTerms[0]._strTableName;
+        LinkedList<Hashtable<String, Object>> result = new LinkedList<>();
+
+        for (Page p : Table.loadTable(tableName)) {
+            for (Hashtable<String, Object> record : p) {
+
+                if (arrSQLTerms.length == 1) {
+                    SQLTerm term = arrSQLTerms[0];
+                    Object value = record.get(term._strColumnName);
+                    if (Util.evaluateSqlTerm(value, term._strOperator, term._objValue)) {
+                        result.add(record);
+                    }
+                    continue;
+                }
+
+                LinkedList<Object> postfix = Util.toPostfix(record, arrSQLTerms, strarrOperators);
+                boolean res = Util.evaluatePostfix(postfix);
+                if (res) {
+                    result.add(record);
+                }
+            }
+        }
+
+
+        return result.iterator();
+    }
+
+    public static Properties getDb_config() {
+        if (db_config == null) {
+            throw new RuntimeException("DBApp not initialized");
+        }
+
+        return db_config;
     }
 
     public static void test() {
@@ -218,7 +269,7 @@ public class DBApp {
             Hashtable htblColNameType = new Hashtable();
             htblColNameType.put("id", "java.lang.Integer");
             htblColNameType.put("name", "java.lang.String");
-            htblColNameType.put("gpa", "java.lang.double");
+            htblColNameType.put("gpa", "java.lang.Double");
             dbApp.createTable(strTableName, "id", htblColNameType);
             dbApp.createIndex(strTableName, "gpa", "gpaIndex");
 
