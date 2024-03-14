@@ -5,8 +5,7 @@ import org.jetbrains.annotations.NotNull;
 import java.io.*;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Iterator;
-import java.util.Vector;
+import java.util.*;
 
 /**
  * @author ahmedgado
@@ -131,5 +130,14 @@ public class Table implements Iterable<Page>, Serializable {
 
             return page;
         }
+    }
+    public List<Hashtable<String, Object>> getRecords() {
+        List<Hashtable<String, Object>> allRecords = new ArrayList<>();
+        Iterator<Page> pageIterator = this.iterator();
+        while (pageIterator.hasNext()) {
+            Page page = pageIterator.next();
+            allRecords.addAll(page.getRecords());
+        }
+        return allRecords;
     }
 }
