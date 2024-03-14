@@ -198,7 +198,7 @@ public class DBApp {
         LinkedList<Hashtable<String, Object>> result = new LinkedList<>();
 
         for (Page p : Table.loadTable(tableName)) {
-            for (Hashtable<String, Object> record : p) {
+            for (Hashtable<String, Object> record : p.getRecords()) {
 
                 if (arrSQLTerms.length == 1) {
                     SQLTerm term = arrSQLTerms[0];
