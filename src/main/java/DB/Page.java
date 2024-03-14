@@ -2,7 +2,12 @@ package DB;
 
 import org.jetbrains.annotations.NotNull;
 
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.ObjectOutputStream;
 import java.io.Serializable;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Hashtable;
 import java.util.Iterator;
 import java.util.Vector;
@@ -12,12 +17,25 @@ import java.util.Vector;
  */
 
 public class Page implements Iterable<Hashtable<String, Object>>, Serializable {
+    private final String tableName;
     private final int max;
     private final Vector<Hashtable<String, Object>> records;
 
-    public Page(int max) {
+    public Page(String tableName, int max) {
+        this.tableName = tableName;
         this.max = max;
         this.records = new Vector<>();
+    }
+
+    public void updatePage() {
+        Path path = Paths.get((String) DBApp.getDb_config().get("DataPath"), tableName, hashCode() + ".ser");
+        try (
+                FileOutputStream fileOut = new FileOutputStream(path.toAbsolutePath().toString());
+                ObjectOutputStream out = new ObjectOutputStream(fileOut)) {
+            out.writeObject(this);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     public boolean isFull() {
