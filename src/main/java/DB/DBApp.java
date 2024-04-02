@@ -234,9 +234,9 @@ public class DBApp {
                                 Hashtable<String, Object> htblColNameValue,
                                       ArrayList indexColumns,Table table,Hashtable<String, Hashtable<String, String[]>> metaData) throws DBAppException {
         Page p = null;
-        int wantedPage =0;
+        int wantedPage = 0;
         //loop over the index columns
-        for(int i = 0; i < indexColumns.size(); i++){
+        for (int i = 0; i < indexColumns.size(); i++) {
             //get the index column
             String indexColumn = (String) indexColumns.get(i);
             //get the index name
@@ -268,7 +268,7 @@ public class DBApp {
                 fileOut.close();
             } catch (IOException e) {
                 throw new RuntimeException(e);
-        }
+            }
 
             //iterate over the records in the page
             biggerloop:
@@ -301,6 +301,7 @@ public class DBApp {
                     break biggerloop;
                 }
             }
+        }
     }
 
 
