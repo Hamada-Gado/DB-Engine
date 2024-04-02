@@ -301,56 +301,6 @@ public class DBApp {
                     break biggerloop;
                 }
             }
-
-//        //get the index column
-//        String indexColumn = (String) indexColumns.get(0);
-//        //get the index name
-//        String indexName = metaData.get(indexColumn).get("IndexName")[0];
-//        //get the index type
-//        String indexType = metaData.get(indexColumn).get("IndexType")[0];
-//        //get the index file
-//        String indexFile = (String) getDb_config().get("DataPath") + "/" + strTableName + "/" + indexName + ".ser";
-//        //load the index
-//        bplustree index = Util.loadIndex(indexFile, indexType);
-//        //get the value of the index column in the condition
-//        Object value = htblColNameValue.get(indexColumn);
-//        //get the page number of the record
-//        int pageNumber = (int) index.search(value);
-//        //deleteing from BPTree the value and updating BPTree
-//        index.delete(value);
-//        //load the page
-//        Page page = table.getPage(pageNumber);
-//        //iterate over the records in the page
-//        biggerloop:
-//        for (int j = 0; j < page.getRecords().size(); j++) {
-//            // get the record
-//            Hashtable<String, Object> record = page.getRecords().get(j);
-//            boolean delete = true;
-//            //keyset is the columns in the record
-//            //loop over the columns in the record
-//            for (String colName : htblColNameValue.keySet()) {
-//                //if the record does not have the column or the value is not equal to the value in the condition
-//                //get() gets the value of the column
-//                if (!record.get(colName).equals(htblColNameValue.get(colName))) {
-//                    delete = false;
-//                    break;
-//                }
-//            }
-//            if (delete) {
-//                //remove the record
-//                page.getRecords().remove(j);
-//
-//                //if the page is empty, remove it
-//                if (page.isEmpty()) {
-//                    table.getPages().remove(pageNumber);
-//                    table.updateTable(); //serialize the table
-//                } else {
-//                    page.updatePage(); //serialize the page
-//                    table.updateTable(); //serialize the table
-//                }
-//                break biggerloop;
-//            }
-        //}
     }
 
 
