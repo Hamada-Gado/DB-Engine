@@ -25,7 +25,7 @@ public class Page implements Serializable {
         this.records = new Vector<>();
     }
 
-    public void updatePage() {
+    public void updatePage() { //this method is used to serialize the page
         Path path = Paths.get((String) DBApp.getDb_config().get("DataPath"), tableName, hashCode() + ".ser");
         try (
                 FileOutputStream fileOut = new FileOutputStream(path.toAbsolutePath().toString());
