@@ -183,4 +183,9 @@ public class Util {
             default -> throw new RuntimeException("Invalid operator");
         };
     }
+
+    // This method is used to get the index of the page that contains the record
+    public static bplustree loadIndex(String file,String type){
+        return new bplustree(file,type); //el kalam da habal PLEASE CHANGE IT
+    };
 }
