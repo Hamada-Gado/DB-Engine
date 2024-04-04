@@ -1,8 +1,6 @@
 package DB;
 
-import java.io.BufferedReader;
-import java.io.FileReader;
-import java.io.IOException;
+import java.io.*;
 import java.util.*;
 
 
@@ -184,8 +182,18 @@ public class Util {
         };
     }
 
-    // This method is used to get the index of the page that contains the record
-    public static bplustree loadIndex(String file,String type){
-        return new bplustree(file,type); //el kalam da habal PLEASE CHANGE IT
+    // fetch the bplustree index from the disk
+    public static bplustree loadIndex(String file){
+        bplustree tree = null;
+        try {
+            FileInputStream fileIn = new FileInputStream(file);
+            ObjectInputStream in = new ObjectInputStream(fileIn);
+            tree = (bplustree) in.readObject();
+            in.close();
+            fileIn.close();
+        } catch (IOException | ClassNotFoundException e) {
+            throw new RuntimeException(e);
+        }
+        return tree;
     };
 }

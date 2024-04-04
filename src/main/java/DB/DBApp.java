@@ -263,31 +263,30 @@ public class DBApp {
 
     public void deleteFromTableHelper(String strTableName,
                                 Hashtable<String, Object> htblColNameValue,
-                                      ArrayList indexColumns,Table table,Hashtable<String, Hashtable<String, String[]>> metaData) throws DBAppException {
+                                      ArrayList<String> indexColumns,Table table,Hashtable<String, Hashtable<String, String[]>> metaData) throws DBAppException {
         Page p = null;
-        int wantedPage = 0;
+        Double wantedPage = 0.0;
         //loop over the index columns
-        for (int i = 0; i < indexColumns.size(); i++) {
+        for (String column : indexColumns) {
             //get the index column
-            String indexColumn = (String) indexColumns.get(i);
+            String indexColumn = column;
             //get the index name
             String indexName = metaData.get(indexColumn).get("IndexName")[0];
-            //get the index type
-            String indexType = metaData.get(indexColumn).get("IndexType")[0];
             //get the index file
             String indexFile = (String) getDb_config().get("DataPath") + "/" + strTableName + "/" + indexName + ".ser";
             //load the index
-            bplustree index = Util.loadIndex(indexFile, indexType);
+            bplustree index = Util.loadIndex(indexFile);
             //get the value of the index column in the condition
             Object value = htblColNameValue.get(indexColumn);
             //get the page number of the record
-            int pageNumber = (int) index.search(value);
+            Double pageNumber = index.search((Integer) value);
             wantedPage = pageNumber;
+
             //get Page using pageNumber
-            p = table.getPage(pageNumber);
+            p = table.getPage(String.valueOf(pageNumber)); //<----- Not sure of this line
 
             //deleting from BPTree the value and updating BPTree
-            index.delete(value);
+            index.delete((Integer) value);
 
             //save the index on disk
             Path indexPath = Paths.get((String) db_config.get("DataPath"), strTableName, indexName + ".ser");
@@ -307,7 +306,7 @@ public class DBApp {
                 // get the record
                 Hashtable<String, Object> record = p.getRecords().get(j);
                 boolean delete = true;
-                //keyset is the columns in the record
+                //key-set is the columns in the record
                 //loop over the columns in the record
                 for (String colName : htblColNameValue.keySet()) {
                     //if the record does not have the column or the value is not equal to the value in the condition

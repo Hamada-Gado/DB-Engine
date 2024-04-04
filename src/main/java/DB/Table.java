@@ -31,6 +31,11 @@ public class Table implements Iterable<Page>, Serializable {
         }
     }
 
+    //getPages() method
+    public Vector<Path> getPages() {
+        return pages;
+    }
+
 
     /**
      * @param page the page to add
@@ -51,10 +56,7 @@ public class Table implements Iterable<Page>, Serializable {
         updateTable();
     }
 
-    //create getPages method
-    public Vector<Path> getPages() {
-        return pages;
-    }
+    
 
     /**
      * @param index the index of the page
