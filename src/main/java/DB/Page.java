@@ -16,17 +16,19 @@ import java.util.Vector;
 
 public class Page implements Serializable {
     private final String tableName;
+    private final int pageNumber;
     private final int max;
-    private final Vector<Hashtable<String, Object>> records;
+    public Vector<Hashtable<String, Object>> records;
 
-    public Page(String tableName, int max) {
+    public Page(String tableName, int pageNumber, int max) {
         this.tableName = tableName;
+        this.pageNumber = pageNumber;
         this.max = max;
         this.records = new Vector<>();
     }
 
     public void updatePage() {
-        Path path = Paths.get((String) DBApp.getDb_config().get("DataPath"), tableName, hashCode() + ".ser");
+        Path path = Paths.get((String) DBApp.getDb_config().get("DataPath"), tableName, pageNumber + ".ser");
         try (
                 FileOutputStream fileOut = new FileOutputStream(path.toAbsolutePath().toString());
                 ObjectOutputStream out = new ObjectOutputStream(fileOut)) {
@@ -44,12 +46,32 @@ public class Page implements Serializable {
         return records.isEmpty();
     }
 
+    public int getPageNumber() {
+        return pageNumber;
+    }
+
     public int getMax() {
         return max;
     }
 
     public Vector<Hashtable<String, Object>> getRecords() {
         return records;
+    }
+
+    public void add(Hashtable<String, Object> record) {
+        records.add(record);
+        updatePage();
+    }
+
+    public void add(int recordNo, Hashtable<String, Object> record) {
+        records.add(recordNo, record);
+        updatePage();
+    }
+
+    public Hashtable<String, Object> remove(int recordNo) {
+        Hashtable htbl = records.remove(recordNo);
+        updatePage();
+        return htbl;
     }
 
     @Override
