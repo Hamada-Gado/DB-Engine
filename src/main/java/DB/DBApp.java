@@ -144,6 +144,7 @@ public class DBApp {
         if (metaData == null) {
             throw new DBAppException("Table not found");
         }
+
         String pKey = metaData.get(strTableName).get("clusteringKey")[0];
         Object pValue = htblColNameValue.get(pKey);
 
@@ -153,23 +154,30 @@ public class DBApp {
         int recordNo = 0;//Placeholder
         for (int i = pageNo; i <= currentTable.pagesCount(); i++) {
             if (i < currentTable.pagesCount()) {
+                Page page = currentTable.getPage(i);
                 if (!currentTable.getPage(i).isFull()) {
                     // e.g page size is 10,but currently it contains 9 records.
                     // If you want to insert into position 4 (if we assume recordNo is the one before where you want to insert then it's 3)
                     // you have to temporarily remove records 4 to 9 to be able to insert
-                    currentTable.getPage(i).getRecords().insertElementAt(htblColNameValue, recordNo + 1);
+                    page.add(recordNo, htblColNameValue);
+                    System.out.println("just add: " + currentTable.getPage(i).getRecords());
                     break;
                 } else {
-                    currentTable.getPage(i).getRecords().insertElementAt(htblColNameValue, recordNo + 1);
-                    htblColNameValue = currentTable.getPage(i).getRecords().remove(currentTable.getPage(i).getMax());
+                    page.add(recordNo, htblColNameValue);
+                    htblColNameValue = page.remove(currentTable.getPage(i).getMax());
+                    System.out.println("let's shift: " + currentTable.getPage(i).getRecords());
+                    recordNo = 0;
                 }
             } else {
                 Page newPage = new Page(strTableName, currentTable.pagesCount(), Integer.parseInt((String) DBApp.getDb_config().get("MaximumRowsCountinPage")));
                 newPage.getRecords().add(htblColNameValue);
                 currentTable.addPage(newPage);
+                System.out.println("new page: " + currentTable.getPage(i).getRecords());
                 break;
             }
         }
+
+        currentTable.updateTable();
     }
 
 

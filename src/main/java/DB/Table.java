@@ -46,9 +46,9 @@ public class Table implements Iterable<Page>, Serializable {
             throw new RuntimeException(e);
         }
 
-//        for (Page page : this) {
-//            page.updatePage();
-//        }
+        for (Page page : this) {
+            page.updatePage();
+        }
     }
 
 
@@ -106,10 +106,6 @@ public class Table implements Iterable<Page>, Serializable {
         StringBuilder res = new StringBuilder();
 
         for (Page page : this) {
-            if (page == null) {
-                break;
-            }
-
             res.append(page).append("\n");
         }
 
@@ -154,16 +150,12 @@ public class Table implements Iterable<Page>, Serializable {
 
         public TableIterator() {
             pageIndex = 0;
-
             page = null;
-            if (!pagesPath.isEmpty()) {
-                page = getPage(pageIndex);
-            }
         }
 
         @Override
         public boolean hasNext() {
-            return page != null && pageIndex < pagesPath.size();
+            return pageIndex < pagesCount();
         }
 
         @Override
@@ -172,11 +164,8 @@ public class Table implements Iterable<Page>, Serializable {
                 throw new RuntimeException("No more records");
             }
 
+            page = getPage(pageIndex);
             pageIndex++;
-            page = null;
-            if (pageIndex < pagesPath.size()) {
-                page = getPage(pageIndex);
-            }
 
             return page;
         }

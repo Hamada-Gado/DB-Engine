@@ -58,6 +58,22 @@ public class Page implements Serializable {
         return records;
     }
 
+    public void add(Hashtable<String, Object> record) {
+        records.add(record);
+        updatePage();
+    }
+
+    public void add(int recordNo, Hashtable<String, Object> record) {
+        records.add(recordNo, record);
+        updatePage();
+    }
+
+    public Hashtable<String, Object> remove(int recordNo) {
+        Hashtable htbl = records.remove(recordNo);
+        updatePage();
+        return htbl;
+    }
+
     @Override
     public String toString() {
         StringBuilder res = new StringBuilder();
