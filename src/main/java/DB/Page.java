@@ -44,6 +44,10 @@ public class Page implements Serializable {
         return records.isEmpty();
     }
 
+    public int getMax() {
+        return max;
+    }
+
     public Vector<Hashtable<String, Object>> getRecords() {
         return records;
     }

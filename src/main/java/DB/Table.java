@@ -3,6 +3,7 @@ package DB;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.*;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Iterator;
@@ -99,6 +100,10 @@ public class Table implements Iterable<Page>, Serializable {
         }
     }
 
+    public int pagesCount() {
+        return pages.size();
+    }
+
     /**
      * Saves the table to a file
      *
@@ -108,16 +113,23 @@ public class Table implements Iterable<Page>, Serializable {
     public static Table loadTable(String tableName) {
         Path path = Paths.get((String) DBApp.getDb_config().get("DataPath"), tableName + ".ser");
         Table table;
-        try {
-            FileInputStream fileIn = new FileInputStream(path.toAbsolutePath().toString());
-            ObjectInputStream in = new ObjectInputStream(fileIn);
+        try (
+                FileInputStream fileIn = new FileInputStream(path.toAbsolutePath().toString());
+                ObjectInputStream in = new ObjectInputStream(fileIn)) {
             table = (Table) in.readObject();
-            in.close();
-            fileIn.close();
         } catch (IOException | ClassNotFoundException e) {
             throw new RuntimeException(e);
         }
         return table;
+    }
+
+    public static void deleteTable(String tableName) {
+        Path path = Paths.get((String) DBApp.getDb_config().get("DataPath"), tableName);
+        try {
+            Files.delete(path);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     public @NotNull Iterator<Page> iterator() {
