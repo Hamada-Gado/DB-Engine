@@ -78,12 +78,12 @@ public class Util {
         int[] recordPos = new int[3];
         Table table = Table.loadTable(tableName);
 
-        if (table.getPages().isEmpty()) {
+        if (table.getPagesPath().isEmpty()) {
             return recordPos;
         }
 
         int leftPage = 0;
-        int rightPage = table.getPages().size() - 1;
+        int rightPage = table.getPagesPath().size() - 1;
         int pageNumber;
 
         while (true) {

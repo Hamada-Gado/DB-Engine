@@ -115,12 +115,10 @@ public class DBApp {
 
         // save table to disk
         Path path = Paths.get((String) getDb_config().get("DataPath"), strTableName, strTableName + ".ser");
-        try {
-            FileOutputStream fileOut = new FileOutputStream(path.toAbsolutePath().toString());
-            ObjectOutputStream out = new ObjectOutputStream(fileOut);
+        try (
+                FileOutputStream fileOut = new FileOutputStream(path.toAbsolutePath().toString());
+                ObjectOutputStream out = new ObjectOutputStream(fileOut)) {
             out.writeObject(table);
-            out.close();
-            fileOut.close();
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
