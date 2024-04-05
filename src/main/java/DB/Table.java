@@ -45,6 +45,10 @@ public class Table implements Iterable<Page>, Serializable {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+
+//        for (Page page : this) {
+//            page.updatePage();
+//        }
     }
 
 
@@ -54,15 +58,8 @@ public class Table implements Iterable<Page>, Serializable {
      *             serialize the page and add its path to the table
      */
     public void addPage(@NotNull Page page) {
-        Path path = Paths.get((String) DBApp.getDb_config().get("DataPath"), tableName, page.hashCode() + ".ser");
-        try (
-                FileOutputStream fileOut = new FileOutputStream(path.toAbsolutePath().toString());
-                ObjectOutputStream out = new ObjectOutputStream(fileOut)) {
-            out.writeObject(page);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-
+        Path path = Paths.get((String) DBApp.getDb_config().get("DataPath"), tableName, page.getPageNumber() + ".ser");
+        page.updatePage();
         pagesPath.add(path.toAbsolutePath().toString());
         updateTable();
     }
@@ -109,7 +106,11 @@ public class Table implements Iterable<Page>, Serializable {
         StringBuilder res = new StringBuilder();
 
         for (Page page : this) {
-            res.append(page.toString()).append("\n");
+            if (page == null) {
+                break;
+            }
+
+            res.append(page).append("\n");
         }
 
         return res.toString();

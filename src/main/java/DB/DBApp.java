@@ -164,7 +164,7 @@ public class DBApp {
                     htblColNameValue = currentTable.getPage(i).getRecords().remove(currentTable.getPage(i).getMax());
                 }
             } else {
-                Page newPage = new Page(strTableName, Integer.parseInt((String) DBApp.getDb_config().get("MaximumRowsCountinPage")));
+                Page newPage = new Page(strTableName, currentTable.pagesCount(), Integer.parseInt((String) DBApp.getDb_config().get("MaximumRowsCountinPage")));
                 newPage.getRecords().add(htblColNameValue);
                 currentTable.addPage(newPage);
                 break;
