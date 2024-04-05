@@ -140,43 +140,15 @@ public class DBApp {
                                 Hashtable<String, Object> htblColNameValue) throws DBAppException {
         //ToDo: validation
 
-        // try{
         Hashtable<String, Hashtable<String, String[]>> metaData = Util.getMetadata(strTableName);
         if (metaData == null) {
             throw new DBAppException("Table not found");
         }
-        //handle errors
         String pKey = metaData.get(strTableName).get("clusteringKey")[0];
         Object pValue = htblColNameValue.get(pKey);
 
         Table currentTable = Table.loadTable(strTableName);
-        int noOfRecords = currentTable.noOfRecords();
-        int max, min, avg;
-        min = 0;
-        max = noOfRecords - 1;
 
-//            min = currentTable.getPage(0).getRecords().get(0).get(pKey);
-//            max = currentTable.getPage(noOfRecords/(int)DBApp.db_config.get("MaximumRowsCountinPage")-1).getRecords().get(currentTable.getPage(noOfRecords/(int)DBApp.db_config.get("MaximumRowsCountinPage")-1).getRecords().size()-1).get(pKey);
-        boolean flag = false;
-
-
-        while (!flag) {
-            avg = (min + max) / 2;
-            // if(pValue instanceof String) {//mshkook f amro
-            //int i = ((String) pValue).compareTo(String.valueOf(((currentTable.getPage(avg / (int) DBApp.db_config.get("MaximumRowsCountinPage") - 1)).getRecords().get(avg % ((int) DBApp.db_config.get("MaximumRowsCountinPage"))))));
-            //((String) pValue).compareTo((currentTable.getPage(avg/(int)DBApp.db_config.get("MaximumRowsCountinPage")-1).getRecords().get(avg-((int)DBApp.db_config.get("MaximumRowsCountinPage")*avg/(int)DBApp.db_config.get("MaximumRowsCountinPage")-2))));
-            //}
-            // if(pValue instanceof Integer && (currentTable.getPage(avg / (int) DBApp.db_config.get("MaximumRowsCountinPage") - 1).getRecords().get(avg % ((int) DBApp.db_config.get("MaximumRowsCountinPage"))-1)) instanceof Integer){
-            if (pValue instanceof Integer) {
-                Hashtable recAvg = (currentTable.getPage(avg / (int) DBApp.db_config.get("MaximumRowsCountinPage") - 1).getRecords().get(avg % ((int) DBApp.db_config.get("MaximumRowsCountinPage")) - 1));
-                if ((Integer) pValue >= ((Integer) (recAvg.get(pKey)))) {
-                    min = avg;
-                } else {
-                    max = avg;
-                }
-            }
-            //}
-        }
         int pageNo = 0;//Placeholder
         int recordNo = 0;//Placeholder
         for (int i = pageNo; i <= currentTable.pagesCount(); i++) {
@@ -187,25 +159,17 @@ public class DBApp {
                     // you have to temporarily remove records 4 to 9 to be able to insert
                     currentTable.getPage(i).getRecords().insertElementAt(htblColNameValue, recordNo + 1);
                     break;
-                }
-                else {
+                } else {
                     currentTable.getPage(i).getRecords().insertElementAt(htblColNameValue, recordNo + 1);
                     htblColNameValue = currentTable.getPage(i).getRecords().remove(currentTable.getPage(i).getMax());
                 }
-            }
-            else{
-                Page newPage = new Page((int) DBApp.db_config.get("MaximumRowsCountinPage"));
+            } else {
+                Page newPage = new Page(strTableName, Integer.parseInt((String) DBApp.getDb_config().get("MaximumRowsCountinPage")));
                 newPage.getRecords().add(htblColNameValue);
                 currentTable.addPage(newPage);
+                break;
             }
         }
-
-
-        //}
-        //catch{
-        //throw new DBAppException("not implemented yet");
-        //}
-
     }
 
 
