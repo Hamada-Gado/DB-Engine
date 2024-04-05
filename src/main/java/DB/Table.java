@@ -3,6 +3,7 @@ package DB;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.*;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Iterator;
@@ -14,15 +15,29 @@ import java.util.Vector;
 
 public class Table implements Iterable<Page>, Serializable {
     private final String tableName;
-    private final Vector<Path> pages;
+    private final Vector<String> pagesPath;
+    private final Vector<Comparable> clusteringKeyMin;
 
     public Table(String tableName) {
         this.tableName = tableName;
-        pages = new Vector<>();
+        pagesPath = new Vector<>();
+        clusteringKeyMin = new Vector<>();
+    }
+
+    public String getTableName() {
+        return tableName;
+    }
+
+    public Vector<String> getPagesPath() {
+        return pagesPath;
+    }
+
+    public Vector<Comparable> getClusteringKeyMin() {
+        return clusteringKeyMin;
     }
 
     public void updateTable() {
-        Path path = Paths.get((String) DBApp.getDb_config().get("DataPath"), tableName + ".ser");
+        Path path = Paths.get((String) DBApp.getDb_config().get("DataPath"), tableName, tableName + ".ser");
         try (
                 FileOutputStream fileOut = new FileOutputStream(path.toAbsolutePath().toString());
                 ObjectOutputStream out = new ObjectOutputStream(fileOut)) {
@@ -48,7 +63,7 @@ public class Table implements Iterable<Page>, Serializable {
             throw new RuntimeException(e);
         }
 
-        pages.add(path);
+        pagesPath.add(path.toAbsolutePath().toString());
         updateTable();
     }
 
@@ -57,11 +72,11 @@ public class Table implements Iterable<Page>, Serializable {
      * @return the name of the table
      */
     public Page getPage(int index) {
-        Path path = pages.get(index);
+        String path = pagesPath.get(index);
 
         Page page;
         try (
-                FileInputStream fileIn = new FileInputStream(path.toAbsolutePath().toString());
+                FileInputStream fileIn = new FileInputStream(path);
                 ObjectInputStream in = new ObjectInputStream(fileIn)) {
             page = (Page) in.readObject();
         } catch (IOException | ClassNotFoundException e) {
@@ -77,12 +92,27 @@ public class Table implements Iterable<Page>, Serializable {
      */
     public Page getPage(String pageName) {
         Path path = Paths.get((String) DBApp.getDb_config().get("DataPath"), tableName, pageName + ".ser");
-        int index = pages.indexOf(path);
+        int index = pagesPath.indexOf(path.toAbsolutePath().toString());
         if (index == -1) {
             throw new RuntimeException("Page not found");
         } else {
             return getPage(index);
         }
+    }
+
+    public int pagesCount() {
+        return pagesPath.size();
+    }
+
+    @Override
+    public String toString() {
+        StringBuilder res = new StringBuilder();
+
+        for (Page page : this) {
+            res.append(page.toString()).append("\n");
+        }
+
+        return res.toString();
     }
 
     /**
@@ -92,18 +122,25 @@ public class Table implements Iterable<Page>, Serializable {
      * @return table deserialize the table from the file
      */
     public static Table loadTable(String tableName) {
-        Path path = Paths.get((String) DBApp.getDb_config().get("DataPath"), tableName + ".ser");
+        Path path = Paths.get((String) DBApp.getDb_config().get("DataPath"), tableName, tableName + ".ser");
         Table table;
-        try {
-            FileInputStream fileIn = new FileInputStream(path.toAbsolutePath().toString());
-            ObjectInputStream in = new ObjectInputStream(fileIn);
+        try (
+                FileInputStream fileIn = new FileInputStream(path.toAbsolutePath().toString());
+                ObjectInputStream in = new ObjectInputStream(fileIn)) {
             table = (Table) in.readObject();
-            in.close();
-            fileIn.close();
         } catch (IOException | ClassNotFoundException e) {
             throw new RuntimeException(e);
         }
         return table;
+    }
+
+    public static void deleteTable(String tableName) {
+        Path path = Paths.get((String) DBApp.getDb_config().get("DataPath"), tableName);
+        try {
+            Files.delete(path);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     public @NotNull Iterator<Page> iterator() {
@@ -118,14 +155,14 @@ public class Table implements Iterable<Page>, Serializable {
             pageIndex = 0;
 
             page = null;
-            if (!pages.isEmpty()) {
+            if (!pagesPath.isEmpty()) {
                 page = getPage(pageIndex);
             }
         }
 
         @Override
         public boolean hasNext() {
-            return page != null && pageIndex < pages.size();
+            return page != null && pageIndex < pagesPath.size();
         }
 
         @Override
@@ -136,7 +173,7 @@ public class Table implements Iterable<Page>, Serializable {
 
             pageIndex++;
             page = null;
-            if (pageIndex < pages.size()) {
+            if (pageIndex < pagesPath.size()) {
                 page = getPage(pageIndex);
             }
 
