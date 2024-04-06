@@ -1,5 +1,7 @@
 package DB;
 
+import java.io.File;
+import java.util.Arrays;
 import java.util.Hashtable;
 import java.util.LinkedList;
 
@@ -161,5 +163,67 @@ class UtilTest {
 
         result = Util.evaluatePostfix(postfix);
         assertEquals(false, result);
+    }
+
+    @org.junit.jupiter.api.Test
+    void testGetRecordPos() {
+        String strTableName = "Test";
+        DBApp dbApp = new DBApp();
+
+        Hashtable htblColNameType = new Hashtable();
+        htblColNameType.put("id", "java.lang.Integer");
+        htblColNameType.put("name", "java.lang.String");
+        htblColNameType.put("gpa", "java.lang.Double");
+        try {
+            dbApp.createTable(strTableName, "id", htblColNameType);
+        } catch (DBAppException e) {
+            e.printStackTrace();
+            assertTrue(false);
+        }
+
+        try {
+            Hashtable htblColNameValue = new Hashtable();
+            htblColNameValue.put("id", Integer.valueOf(2343432));
+            htblColNameValue.put("name", new String("Ahmed Noor"));
+            htblColNameValue.put("gpa", Double.valueOf(0.95));
+            dbApp.insertIntoTable(strTableName, htblColNameValue);
+
+            htblColNameValue.clear();
+            htblColNameValue.put("id", Integer.valueOf(453455));
+            htblColNameValue.put("name", new String("Ahmed Noor"));
+            htblColNameValue.put("gpa", Double.valueOf(0.95));
+            dbApp.insertIntoTable(strTableName, htblColNameValue);
+
+            htblColNameValue.clear();
+            htblColNameValue.put("id", Integer.valueOf(5674567));
+            htblColNameValue.put("name", new String("Dalia Noor"));
+            htblColNameValue.put("gpa", Double.valueOf(1.25));
+            dbApp.insertIntoTable(strTableName, htblColNameValue);
+
+            htblColNameValue.clear();
+            htblColNameValue.put("id", Integer.valueOf(23498));
+            htblColNameValue.put("name", new String("John Noor"));
+            htblColNameValue.put("gpa", Double.valueOf(1.5));
+            dbApp.insertIntoTable(strTableName, htblColNameValue);
+
+            htblColNameValue.clear();
+            htblColNameValue.put("id", Integer.valueOf(78452));
+            htblColNameValue.put("name", new String("Zaky Noor"));
+            htblColNameValue.put("gpa", Double.valueOf(0.88));
+            dbApp.insertIntoTable(strTableName, htblColNameValue);
+
+            System.out.println(Table.loadTable(strTableName));
+        } catch (DBAppException e) {
+            e.printStackTrace();
+        }
+
+        try {
+            int[] recordPos = Util.getRecordPos(strTableName, "id", Integer.valueOf(453455));
+            System.out.println(Arrays.toString(recordPos));
+        }
+        catch (DBAppException e) {
+            e.printStackTrace();
+            assertTrue(false);
+        }
     }
 }
