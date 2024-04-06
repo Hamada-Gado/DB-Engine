@@ -203,11 +203,11 @@ public class DBApp {
                 if (metaData == null) {
                    throw new DBAppException("Table not found");
             }
-                ArrayList indexColumns = new ArrayList();
+                ArrayList<String> indexColumns = new ArrayList<>();
                 //loop over metaData file and check if the index exists
                 for (String colName : metaData.keySet()) {
-                    Hashtable<String, String[]> colData = metaData.get(colName);
-                    if (colData.get("IndexName") != null) {
+                    // check if index name is not null in meta-data file
+                    if (metaData.get(colName).get("IndexName")[0] != null) {
                         indexColumns.add(colName);
                     }
                 }
@@ -228,7 +228,7 @@ public class DBApp {
                         // get the record
                         Hashtable<String, Object> record = page.getRecords().get(j);
                         boolean delete = true;
-                        //keyset is the columns in the record
+                        //key-set is the columns in the record
                         //loop over the columns in the record
                         for (String colName : htblColNameValue.keySet()) {
                             //if the record does not have the column or the value is not equal to the value in the condition
@@ -245,15 +245,13 @@ public class DBApp {
                             //if the page is empty, remove it
                             if (page.isEmpty()) {
                                 table.getPages().remove(i);
-                                table.updateTable(); //serialize the table
                             } else {
                                 page.updatePage(); //serialize the page
-                                table.updateTable(); //serialize the table
                             }
-                            break outerloop;
                         }
                     }
                 }
+                table.updateTable(); //serialize the table
             }
             else{
                 //if there is an index
@@ -265,7 +263,6 @@ public class DBApp {
                                 Hashtable<String, Object> htblColNameValue,
                                       ArrayList<String> indexColumns,Table table,Hashtable<String, Hashtable<String, String[]>> metaData) throws DBAppException {
         Page p = null;
-        Double wantedPage = 0.0;
         //loop over the index columns
         for (String column : indexColumns) {
             //get the index column
@@ -280,10 +277,10 @@ public class DBApp {
             Object value = htblColNameValue.get(indexColumn);
             //get the page number of the record
             Double pageNumber = index.search((Integer) value);
-            wantedPage = pageNumber;
 
-            //get Page using pageNumber
-            p = table.getPage(String.valueOf(pageNumber)); //<----- Not sure of this line
+
+            //get Page
+            p = table.getPage(pageNumber.intValue()); //<--- not sure if this is correct
 
             //deleting from BPTree the value and updating BPTree
             index.delete((Integer) value);
@@ -299,6 +296,7 @@ public class DBApp {
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
+
 
             //iterate over the records in the page
             biggerloop:
@@ -322,16 +320,15 @@ public class DBApp {
 
                     //if the page is empty, remove it
                     if (p.isEmpty()) {
-                        table.getPages().remove(wantedPage);
-                        table.updateTable(); //serialize the table
+                        table.getPages().remove(pageNumber.intValue());
+
                     } else {
                         p.updatePage(); //serialize the page
-                        table.updateTable(); //serialize the table
                     }
-                    break biggerloop;
                 }
             }
         }
+        table.updateTable(); //serialize the table
     }
 
 
