@@ -1,14 +1,53 @@
 package DB;
 
-import java.io.File;
-import java.util.Arrays;
 import java.util.Hashtable;
 import java.util.LinkedList;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 @SuppressWarnings("ALL")
-class UtilTest {
+class Test {
+
+    void naiveInsertIntoTable(String strTableName,
+                              Hashtable<String, Object> htblColNameValue) throws DBAppException {
+        naiveInsertIntoTable(strTableName, htblColNameValue, 0, 0);
+    }
+
+    void naiveInsertIntoTable(String strTableName,
+                              Hashtable<String, Object> htblColNameValue, int pageNo, int recordNo) throws DBAppException {
+        Hashtable<String, Hashtable<String, String[]>> metaData = Util.getMetadata(strTableName);
+        if (metaData == null) {
+            throw new DBAppException("Table not found");
+        }
+
+        String pKey = metaData.get(strTableName).get("clusteringKey")[0];
+        Object pValue = htblColNameValue.get(pKey);
+
+        Table currentTable = Table.loadTable(strTableName);
+
+        for (int i = pageNo; i <= currentTable.pagesCount(); i++) {
+            if (i < currentTable.pagesCount()) {
+                Page page = currentTable.getPage(i);
+                if (!currentTable.getPage(i).isFull()) {
+                    currentTable.addRecord(recordNo, htblColNameValue, pKey, page);
+                    break;
+                } else {
+                    currentTable.addRecord(recordNo, htblColNameValue, pKey, page);
+                    htblColNameValue = currentTable.removeRecord(currentTable.getPage(i).getMax() - 1, page);
+                    recordNo = 0;
+                }
+            } else {
+                Page newPage = new Page(strTableName, currentTable.pagesCount(), Integer.parseInt((String) DBApp.getDb_config().get("MaximumRowsCountinPage")));
+                currentTable.addRecord(htblColNameValue, pKey, newPage);
+                currentTable.addPage(newPage);
+                break;
+            }
+        }
+
+        currentTable.updateTable();
+    }
+
+
     @org.junit.jupiter.api.Test
     void testToPostfix2() {
         SQLTerm[] arrSQLTerms = new SQLTerm[2];
@@ -32,7 +71,7 @@ class UtilTest {
 
         // name = "John" AND age = 20
         // [true, true, "AND"]
-        System.out.println(postfix);
+        // System.out.println(postfix);
 
         assertEquals(3, postfix.size());
         assertEquals(true, postfix.get(0));
@@ -71,7 +110,7 @@ class UtilTest {
 
         // name = "John" OR age = 20 AND gpa = 3.5
         // [true, true, false, "AND", "OR"]
-        System.out.println(postfix);
+        // System.out.println(postfix);
 
         assertEquals(5, postfix.size());
         assertEquals(true, postfix.get(0));
@@ -120,7 +159,7 @@ class UtilTest {
 
         // name = "John" OR age = 20 AND gpa = 3.5 XOR gender = "Male"
         // [true, true, false, "AND", "OR", true, "XOR"]
-        System.out.println(postfix);
+        // System.out.println(postfix);
 
         assertEquals(7, postfix.size());
         assertEquals(true, postfix.get(0));
@@ -165,8 +204,7 @@ class UtilTest {
         assertEquals(false, result);
     }
 
-    @org.junit.jupiter.api.Test
-    void testGetRecordPos() {
+    void testNaiveInsertIntoTable() {
         String strTableName = "Test";
         DBApp dbApp = new DBApp();
 
@@ -183,45 +221,67 @@ class UtilTest {
 
         try {
             Hashtable htblColNameValue = new Hashtable();
-            htblColNameValue.put("id", Integer.valueOf(2343432));
+            htblColNameValue.put("id", Integer.valueOf(20));
             htblColNameValue.put("name", new String("Ahmed Noor"));
             htblColNameValue.put("gpa", Double.valueOf(0.95));
-            dbApp.insertIntoTable(strTableName, htblColNameValue);
+            naiveInsertIntoTable(strTableName, htblColNameValue, 0, 0);
 
             htblColNameValue.clear();
-            htblColNameValue.put("id", Integer.valueOf(453455));
-            htblColNameValue.put("name", new String("Ahmed Noor"));
+            htblColNameValue.put("id", Integer.valueOf(10));
+            htblColNameValue.put("name", new String("Omar Noor"));
             htblColNameValue.put("gpa", Double.valueOf(0.95));
-            dbApp.insertIntoTable(strTableName, htblColNameValue);
+            naiveInsertIntoTable(strTableName, htblColNameValue, 0, 0);
 
             htblColNameValue.clear();
-            htblColNameValue.put("id", Integer.valueOf(5674567));
+            htblColNameValue.put("id", Integer.valueOf(50));
             htblColNameValue.put("name", new String("Dalia Noor"));
             htblColNameValue.put("gpa", Double.valueOf(1.25));
-            dbApp.insertIntoTable(strTableName, htblColNameValue);
+            naiveInsertIntoTable(strTableName, htblColNameValue, 0, 2);
 
             htblColNameValue.clear();
-            htblColNameValue.put("id", Integer.valueOf(23498));
+            htblColNameValue.put("id", Integer.valueOf(30));
             htblColNameValue.put("name", new String("John Noor"));
             htblColNameValue.put("gpa", Double.valueOf(1.5));
-            dbApp.insertIntoTable(strTableName, htblColNameValue);
+            naiveInsertIntoTable(strTableName, htblColNameValue, 0, 2);
 
             htblColNameValue.clear();
-            htblColNameValue.put("id", Integer.valueOf(78452));
+            htblColNameValue.put("id", Integer.valueOf(40));
             htblColNameValue.put("name", new String("Zaky Noor"));
             htblColNameValue.put("gpa", Double.valueOf(0.88));
-            dbApp.insertIntoTable(strTableName, htblColNameValue);
+            naiveInsertIntoTable(strTableName, htblColNameValue, 0, 3);
 
-            System.out.println(Table.loadTable(strTableName));
+            Table table = Table.loadTable(strTableName);
+            assertEquals(1, table.pagesCount());
+            Page page = table.getPage(0);
+            int j;
+            for(int i = j = 0; i < 5; i++) {
+               j = (i + 1) * 10;
+                assertEquals(j, page.getRecords().get(i).get("id"));
+            }
         } catch (DBAppException e) {
             e.printStackTrace();
         }
+    }
+
+    @org.junit.jupiter.api.Test
+    void testGetRecordPos() {
+        String strTableName = "Test";
+        testNaiveInsertIntoTable();
 
         try {
-            int[] recordPos = Util.getRecordPos(strTableName, "id", Integer.valueOf(453455));
-            System.out.println(Arrays.toString(recordPos));
-        }
-        catch (DBAppException e) {
+            int[] recordPos;
+            recordPos = Util.getRecordPos(strTableName, "id", Integer.valueOf(20));
+            assertArrayEquals(new int[]{0, 1, 1}, recordPos);
+
+            recordPos = Util.getRecordPos(strTableName, "id", Integer.valueOf(21));
+            assertArrayEquals(new int[]{0, 1, 0}, recordPos);
+
+            recordPos = Util.getRecordPos(strTableName, "id", Integer.valueOf(45));
+            assertArrayEquals(new int[]{0, 3, 0}, recordPos);
+
+            recordPos = Util.getRecordPos(strTableName, "id", Integer.valueOf(50));
+            assertArrayEquals(new int[]{0, 4, 1}, recordPos);
+        } catch (DBAppException e) {
             e.printStackTrace();
             assertTrue(false);
         }
