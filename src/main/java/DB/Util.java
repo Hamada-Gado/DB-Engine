@@ -124,13 +124,13 @@ public class Util {
             if (midValue.equals(clusteringKeyValue)) {
                 recordPos[0] = pageNumber;
                 recordPos[1] = midRecord;
-                recordPos[2] = 0;
+                recordPos[2] = 1;
 
                 return recordPos;
             } else if (leftRecord > rightRecord) {
                 recordPos[0] = pageNumber;
                 recordPos[1] = rightRecord;
-                recordPos[2] = -1;
+                recordPos[2] = 0;
 
                 return recordPos;
             } else if (midValue.compareTo(clusteringKeyValue) < 0) {
