@@ -207,7 +207,7 @@ public class DBApp {
                 //loop over metaData file and check if the index exists
                 for (String colName : metaData.keySet()) {
                     // check if index name is not null in meta-data file
-                    if (metaData.get(colName).get("IndexName")[0] != null) {
+                    if (metaData.get(strTableName).get("IndexName")[0] != null) {
                         indexColumns.add(colName);
                     }
                 }
@@ -219,7 +219,6 @@ public class DBApp {
 
             //4. Iterate through each page in the table to find the record to delete if no index
             if(indexColumns.size() == 0){
-                outerloop:
                 for (int i = 0; i < table.getPages().size(); i++) {
                     //load page from disk
                     Page page = table.getPage(i);
@@ -299,7 +298,6 @@ public class DBApp {
 
 
             //iterate over the records in the page
-            biggerloop:
             for (int j = 0; j < p.getRecords().size(); j++) {
                 // get the record
                 Hashtable<String, Object> record = p.getRecords().get(j);
