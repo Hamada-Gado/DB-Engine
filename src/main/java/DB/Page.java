@@ -88,6 +88,7 @@ public class Page implements Serializable {
 
             res.append(tuple).append("\n");
         }
+        res.deleteCharAt(res.length() - 1);
 
         return res.toString();
     }

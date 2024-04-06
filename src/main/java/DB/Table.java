@@ -6,6 +6,7 @@ import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Hashtable;
 import java.util.Iterator;
 import java.util.Vector;
 
@@ -101,13 +102,33 @@ public class Table implements Iterable<Page>, Serializable {
         return pagesPath.size();
     }
 
+    public void addRecord(Hashtable<String, Object> record, String pKey, Page page) {
+        page.add(record);
+        clusteringKeyMin.add(page.getPageNumber(), (Comparable) page.getRecords().get(0).get(pKey));
+    }
+
+    public void addRecord(int recordNo, Hashtable<String, Object> record, String pKey, Page page) {
+        page.add(recordNo, record);
+        clusteringKeyMin.add(page.getPageNumber(), (Comparable) page.getRecords().get(0).get(pKey));
+    }
+
+    public Hashtable<String, Object> removeRecord(int recordNo, Page page) {
+        Hashtable htbl = page.remove(recordNo);
+        clusteringKeyMin.add(page.getPageNumber(), (Comparable) page.getRecords().get(0));
+
+        return htbl;
+    }
+
     @Override
     public String toString() {
         StringBuilder res = new StringBuilder();
 
         for (Page page : this) {
-            res.append(page).append("\n");
+            res.append("Page:\n")
+                    .append(page)
+                    .append("\n");
         }
+        res.deleteCharAt(res.length() - 1);
 
         return res.toString();
     }
