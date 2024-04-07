@@ -170,8 +170,6 @@ public class DBApp {
                 break;
             }
         }
-
-        currentTable.updateTable();
     }
 
 
