@@ -140,8 +140,12 @@ public class Table implements Iterable<Page>, Serializable {
      * @param tableName the table to save
      * @return table deserialize the table from the file
      */
-    public static Table loadTable(String tableName) {
+    public static Table loadTable(String tableName) throws DBAppException {
         Path path = Paths.get((String) DBApp.getDb_config().get("DataPath"), tableName, tableName + ".ser");
+        if (!path.toFile().exists()) {
+            throw new DBAppException("Table doesn't exit");
+        }
+
         Table table;
         try (
                 FileInputStream fileIn = new FileInputStream(path.toAbsolutePath().toString());
