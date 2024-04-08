@@ -1,23 +1,41 @@
 package DB;
 
-import org.jetbrains.annotations.NotNull;
 
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.ObjectOutputStream;
 import java.io.Serializable;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Hashtable;
-import java.util.Iterator;
 import java.util.Vector;
 
 /**
  * @author ahmedgado
  */
 
-public class Page implements Iterable<Hashtable<String, Object>>, Serializable {
+public class Page implements Serializable {
+    private final String tableName;
+    private final int pageNumber;
     private final int max;
-    private final Vector<Hashtable<String, Object>> records;
+    public Vector<Hashtable<String, Object>> records;
 
-    public Page(int max) {
+    public Page(String tableName, int pageNumber, int max) {
+        this.tableName = tableName;
+        this.pageNumber = pageNumber;
         this.max = max;
         this.records = new Vector<>();
+    }
+
+    public void updatePage() {
+        Path path = Paths.get((String) DBApp.getDb_config().get("DataPath"), tableName, pageNumber + ".ser");
+        try (
+                FileOutputStream fileOut = new FileOutputStream(path.toAbsolutePath().toString());
+                ObjectOutputStream out = new ObjectOutputStream(fileOut)) {
+            out.writeObject(this);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     public boolean isFull() {
@@ -28,8 +46,32 @@ public class Page implements Iterable<Hashtable<String, Object>>, Serializable {
         return records.isEmpty();
     }
 
+    public int getPageNumber() {
+        return pageNumber;
+    }
+
+    public int getMax() {
+        return max;
+    }
+
     public Vector<Hashtable<String, Object>> getRecords() {
         return records;
+    }
+
+    public void add(Hashtable<String, Object> record) {
+        records.add(record);
+        updatePage();
+    }
+
+    public void add(int recordNo, Hashtable<String, Object> record) {
+        records.add(recordNo, record);
+        updatePage();
+    }
+
+    public Hashtable<String, Object> remove(int recordNo) {
+        Hashtable htbl = records.remove(recordNo);
+        updatePage();
+        return htbl;
     }
 
     @Override
@@ -46,32 +88,8 @@ public class Page implements Iterable<Hashtable<String, Object>>, Serializable {
 
             res.append(tuple).append("\n");
         }
+        res.deleteCharAt(res.length() - 1);
 
         return res.toString();
-    }
-
-
-    @NotNull
-    @Override
-    public Iterator<Hashtable<String, Object>> iterator() {
-        return new PageIterator();
-    }
-
-    private class PageIterator implements Iterator<Hashtable<String, Object>> {
-        private int index = 0;
-
-        @Override
-        public boolean hasNext() {
-            return index < records.size();
-        }
-
-        @Override
-        public Hashtable<String, Object> next() {
-            if (!hasNext()) {
-                throw new RuntimeException("No more records");
-            }
-
-            return records.get(index++);
-        }
     }
 }

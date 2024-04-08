@@ -115,12 +115,10 @@ public class DBApp {
 
         // save table to disk
         Path path = Paths.get((String) getDb_config().get("DataPath"), strTableName, strTableName + ".ser");
-        try {
-            FileOutputStream fileOut = new FileOutputStream(path.toAbsolutePath().toString());
-            ObjectOutputStream out = new ObjectOutputStream(fileOut);
+        try (
+                FileOutputStream fileOut = new FileOutputStream(path.toAbsolutePath().toString());
+                ObjectOutputStream out = new ObjectOutputStream(fileOut)) {
             out.writeObject(table);
-            out.close();
-            fileOut.close();
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -171,8 +169,38 @@ public class DBApp {
     // htblColNameValue must include a value for the primary key
     public void insertIntoTable(String strTableName,
                                 Hashtable<String, Object> htblColNameValue) throws DBAppException {
+        //ToDo: validation
 
-        throw new DBAppException("not implemented yet");
+        Hashtable<String, Hashtable<String, String[]>> metaData = Util.getMetadata(strTableName);
+        if (metaData == null) {
+            throw new DBAppException("Table not found");
+        }
+
+        String pKey = metaData.get(strTableName).get("clusteringKey")[0];
+        Object pValue = htblColNameValue.get(pKey);
+
+        Table currentTable = Table.loadTable(strTableName);
+
+        int pageNo = 0;//Placeholder
+        int recordNo = 0;//Placeholder
+        for (int i = pageNo; i <= currentTable.pagesCount(); i++) {
+            if (i < currentTable.pagesCount()) {
+                Page page = currentTable.getPage(i);
+                if (!currentTable.getPage(i).isFull()) {
+                    currentTable.addRecord(recordNo, htblColNameValue, pKey, page);
+                    break;
+                } else {
+                    currentTable.addRecord(recordNo, htblColNameValue, pKey, page);
+                    htblColNameValue = currentTable.removeRecord(currentTable.getPage(i).getMax() - 1, page);
+                    recordNo = 0;
+                }
+            } else {
+                Page newPage = new Page(strTableName, currentTable.pagesCount(), Integer.parseInt((String) DBApp.getDb_config().get("MaximumRowsCountinPage")));
+                currentTable.addRecord(htblColNameValue, pKey, newPage);
+                currentTable.addPage(newPage);
+                break;
+            }
+        }
     }
 
 
@@ -229,7 +257,7 @@ public class DBApp {
         LinkedList<Hashtable<String, Object>> result = new LinkedList<>();
 
         for (Page p : Table.loadTable(tableName)) {
-            for (Hashtable<String, Object> record : p) {
+            for (Hashtable<String, Object> record : p.getRecords()) {
 
                 if (arrSQLTerms.length == 1) {
                     SQLTerm term = arrSQLTerms[0];
