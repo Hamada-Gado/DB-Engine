@@ -148,7 +148,7 @@ public class DBApp {
         // Iterate over all the records in the table
         for (Hashtable<String, Object> record : table.getRecords()) {
             // Insert the value of the column and the record's primary key into the B+ tree
-            bpt.insert((int) record.get(strColName),0);//el 7eta di msh tamam/fix
+            bpt.insert((int) record.get(strColName), 0);//el 7eta di msh tamam/fix
         }
 
         // Save the B+ tree to the disk
@@ -162,7 +162,7 @@ public class DBApp {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-}
+    }
 
 
     // following method inserts one row only.
@@ -195,9 +195,8 @@ public class DBApp {
                     recordNo = 0;
                 }
             } else {
-                Page newPage = new Page(strTableName, currentTable.pagesCount(), Integer.parseInt((String) DBApp.getDb_config().get("MaximumRowsCountinPage")));
+                Page newPage = currentTable.addPage(Integer.parseInt((String) DBApp.getDb_config().get("MaximumRowsCountinPage")));
                 currentTable.addRecord(htblColNameValue, pKey, newPage);
-                currentTable.addPage(newPage);
                 break;
             }
         }
@@ -223,72 +222,74 @@ public class DBApp {
     public void deleteFromTable(String strTableName,
                                 Hashtable<String, Object> htblColNameValue) throws DBAppException {
 
-            //1. Load the table & check if it exists
-            Table table = Table.loadTable(strTableName);
+        // 1. Validate the delete condition
+        if (htblColNameValue.isEmpty()) {
+            throw new DBAppException("Delete condition cannot be empty.");
+        }
 
-            //2. check if there is an index on the table
-            Hashtable<String, Hashtable<String, String[]>> metaData = Util.getMetadata(strTableName);
-                if (metaData == null) {
-                   throw new DBAppException("Table not found");
+        // 2. Load the table & check if it exists
+        Table table = Table.loadTable(strTableName);
+
+        // 3. check if there is an index on the table
+        Hashtable<String, Hashtable<String, String[]>> metaData = Util.getMetadata(strTableName);
+        if (metaData == null) {
+            throw new DBAppException("Table not found");
+        }
+        ArrayList<String> indexColumns = new ArrayList<>();
+        //loop over metaData file and check if the index exists
+        for (String colName : metaData.keySet()) {
+            // check if index name is not null in meta-data file
+            if (!metaData.get(strTableName).get(colName)[2].equals("null")) {
+                indexColumns.add(colName);
             }
-                ArrayList<String> indexColumns = new ArrayList<>();
-                //loop over metaData file and check if the index exists
-                for (String colName : metaData.keySet()) {
-                    // check if index name is not null in meta-data file
-                    if (!metaData.get(strTableName).get(colName)[2].equals("null")) {
-                        indexColumns.add(colName);
+        }
+
+        //4. Iterate through each page in the table to find the record to delete if no index
+        if (!indexColumns.isEmpty()) {
+            //if there is an index
+            deleteFromTableHelper(strTableName, htblColNameValue, indexColumns, table, metaData);
+            return;
+        }
+
+        for (int i = 0; i < table.pagesCount(); i++) {
+            //load page from disk
+            Page page = table.getPage(i);
+            //iterate over the records in the page
+            for (int j = 0; j < page.getRecords().size(); j++) {
+                // get the record
+                Hashtable<String, Object> record = page.getRecords().get(j);
+                boolean delete = true;
+                //key-set is the columns in the record
+                //loop over the columns in the record
+                for (String colName : htblColNameValue.keySet()) {
+                    //if the record does not have the column or the value is not equal to the value in the condition
+                    //get() gets the value of the column
+
+                    // !! what is the operation???? is it always equals?
+                    if (!record.get(colName).equals(htblColNameValue.get(colName))) {
+                        delete = false;
+                        break;
                     }
                 }
+                if (delete) {
+                    //remove the record
+                    table.removeRecord(j, page);
 
-            // 3. Validate the delete condition
-            if (htblColNameValue.isEmpty()) {
-                throw new DBAppException("Delete condition cannot be empty.");
-            }
-
-            //4. Iterate through each page in the table to find the record to delete if no index
-            if(indexColumns.size() == 0){
-                for (int i = 0; i < table.getPagesPath().size(); i++) {
-                    //load page from disk
-                    Page page = table.getPage(i);
-                    //iterate over the records in the page
-                    for (int j = 0; j < page.getRecords().size(); j++) {
-                        // get the record
-                        Hashtable<String, Object> record = page.getRecords().get(j);
-                        boolean delete = true;
-                        //key-set is the columns in the record
-                        //loop over the columns in the record
-                        for (String colName : htblColNameValue.keySet()) {
-                            //if the record does not have the column or the value is not equal to the value in the condition
-                            //get() gets the value of the column
-                            if (!record.get(colName).equals(htblColNameValue.get(colName))) {
-                                delete = false;
-                                break;
-                            }
-                        }
-                        if (delete) {
-                            //remove the record
-                            table.removeRecord(j,page);
-
-                            //if the page is empty, remove it
-                            if (page.isEmpty()) {
-                                table.getPagesPath().remove(i);
-                            } else {
-                                page.updatePage(); //serialize the page
-                            }
-                        }
+                    //if the page is empty, remove it
+                    if (page.isEmpty()) {
+                        table.getPagesPath().remove(i);
+                    } else {
+                        page.updatePage(); //serialize the page
                     }
                 }
-                table.updateTable(); //serialize the table
             }
-            else{
-                //if there is an index
-                deleteFromTableHelper(strTableName, htblColNameValue, indexColumns, table, metaData);
-            }
+        }
+        table.updateTable(); //serialize the table
     }
 
     public void deleteFromTableHelper(String strTableName,
-                                Hashtable<String, Object> htblColNameValue,
-                                      ArrayList<String> indexColumns,Table table,Hashtable<String, Hashtable<String, String[]>> metaData) throws DBAppException {
+                                      Hashtable<String, Object> htblColNameValue,
+                                      ArrayList<String> indexColumns, Table table, Hashtable<String, Hashtable<String, String[]>> metaData) throws DBAppException {
         Page p = null;
         //loop over the index columns
         for (String column : indexColumns) {

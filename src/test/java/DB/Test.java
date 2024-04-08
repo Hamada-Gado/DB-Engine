@@ -37,9 +37,8 @@ class Test {
                     recordNo = 0;
                 }
             } else {
-                Page newPage = new Page(strTableName, currentTable.pagesCount(), Integer.parseInt((String) DBApp.getDb_config().get("MaximumRowsCountinPage")));
+                Page newPage = currentTable.addPage(Integer.parseInt((String) DBApp.getDb_config().get("MaximumRowsCountinPage")));
                 currentTable.addRecord(htblColNameValue, pKey, newPage);
-                currentTable.addPage(newPage);
                 break;
             }
         }
@@ -254,8 +253,8 @@ class Test {
             assertEquals(1, table.pagesCount());
             Page page = table.getPage(0);
             int j;
-            for(int i = j = 0; i < 5; i++) {
-               j = (i + 1) * 10;
+            for (int i = j = 0; i < 5; i++) {
+                j = (i + 1) * 10;
                 assertEquals(j, page.getRecords().get(i).get("id"));
             }
         } catch (DBAppException e) {

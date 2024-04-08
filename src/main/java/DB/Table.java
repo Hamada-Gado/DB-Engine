@@ -16,6 +16,7 @@ public class Table implements Iterable<Page>, Serializable {
     private final String tableName;
     private final Vector<String> pagesPath;
     private final Vector<Comparable> clusteringKeyMin;
+    private int lastPageNumber = 0;
 
     public Table(String tableName) {
         this.tableName = tableName;
@@ -50,18 +51,22 @@ public class Table implements Iterable<Page>, Serializable {
     }
 
     /**
-     * @param page the page to add
-     *             <p>
-     *             serialize the page and add its path to the table
+     * @param max the maximum number of records in a page
+     *            <p>
+     *            serialize the page and add its path to the table
      */
 
-    public void addPage(@NotNull Page page) {
-        Path path = Paths.get((String) DBApp.getDb_config().get("DataPath"), tableName, page.getPageNumber() + ".ser");
+    public Page addPage(int max) {
+        Page page = new Page(tableName, lastPageNumber++, max);
         page.updatePage();
-        pagesPath.add(path.toAbsolutePath().toString());
-        updateTable();
-    }
 
+        Path path = Paths.get((String) DBApp.getDb_config().get("DataPath"), tableName, page.getPageNumber() + ".ser");
+        pagesPath.add(path.toAbsolutePath().toString());
+
+        updateTable();
+
+        return page;
+    }
 
     /**
      * @param index the index of the page
