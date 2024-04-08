@@ -44,7 +44,7 @@ public class DBApp {
         }
 
         // Create the metadata folder if it doesn't exist
-        File metadataFile = new File(getDb_config().getProperty("MetadataPath"));
+        File metadataFile = new File(getDbConfig().getProperty("MetadataPath"));
         if (!metadataFile.exists()) {
             try {
                 boolean newFile = metadataFile.createNewFile();
@@ -87,11 +87,11 @@ public class DBApp {
             }
         }
 
-        String metadataPath = getDb_config().getProperty("MetadataPath");
+        String metadataPath = getDbConfig().getProperty("MetadataPath");
 
         // create a new table, and parent folder
         Table table = new Table(strTableName);
-        Path tablePath = Paths.get((String) getDb_config().get("DataPath"), strTableName);
+        Path tablePath = Paths.get((String) getDbConfig().get("DataPath"), strTableName);
         File file = new File(tablePath.toAbsolutePath().toString());
         if (!file.exists()) {
             boolean newDir = file.mkdirs();
@@ -114,7 +114,7 @@ public class DBApp {
         }
 
         // save table to disk
-        Path path = Paths.get((String) getDb_config().get("DataPath"), strTableName, strTableName + ".ser");
+        Path path = Paths.get((String) getDbConfig().get("DataPath"), strTableName, strTableName + ".ser");
         try (
                 FileOutputStream fileOut = new FileOutputStream(path.toAbsolutePath().toString());
                 ObjectOutputStream out = new ObjectOutputStream(fileOut)) {
@@ -128,48 +128,42 @@ public class DBApp {
     // following method creates a B+tree index
     public void createIndex(String strTableName,
                             String strColName,
-                            String strIndexName) throws DBAppException, IOException {
+                            String strIndexName) throws DBAppException {
         // Load the table from the disk
-        Path path = Paths.get((String) db_config.get("DataPath"), strTableName, strTableName + ".ser");
-        Table table;
-        try {
-            FileInputStream fileIn = new FileInputStream(path.toAbsolutePath().toString());
-            ObjectInputStream in = new ObjectInputStream(fileIn);
-            table = (Table) in.readObject();
-            in.close();
-            fileIn.close();
-        } catch (IOException | ClassNotFoundException e) {
-            throw new RuntimeException(e);
-        }
+        Table table = Table.loadTable(strTableName);
 
         // Create a new B+ tree
-        bplustree bpt = new bplustree(Integer.parseInt(db_config.getProperty("NodeSize")));
+        bplustree bpt = new bplustree(Integer.parseInt(getDbConfig().getProperty("NodeSize")));
 
         // Iterate over all the records in the table
-        for (Hashtable<String, Object> record : table.getRecords()) {
-            // Insert the value of the column and the record's primary key into the B+ tree
-            bpt.insert((int) record.get(strColName),0);//el 7eta di msh tamam/fix
+        for (Page page : table) {
+            for (Hashtable<String, Object> record : page.getRecords()) {
+                // Insert the value of the column and the record's primary key into the B+ tree
+                bpt.insert((int) record.get(strColName), 0); // el 7eta di msh tamam/fix
+            }
         }
 
         // Save the B+ tree to the disk
-        Path indexPath = Paths.get((String) db_config.get("DataPath"), strTableName, strIndexName + ".ser");
-        try {
-            FileOutputStream fileOut = new FileOutputStream(indexPath.toAbsolutePath().toString());
-            ObjectOutputStream out = new ObjectOutputStream(fileOut);
+        Path indexPath = Paths.get((String) getDbConfig().get("DataPath"), strTableName, strIndexName + ".ser");
+        try (
+                FileOutputStream fileOut = new FileOutputStream(indexPath.toAbsolutePath().toString());
+                ObjectOutputStream out = new ObjectOutputStream(fileOut)) {
             out.writeObject(bpt);
-            out.close();
-            fileOut.close();
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
         //get the metadata
         Hashtable<String, Hashtable<String, String[]>> metadata = Util.getMetadata(strTableName);
-        Hashtable<String, String[]> columnData = metadata.get(strColName);
+        Hashtable<String, String[]> columnData = metadata.get(strTableName);
         String[] columnDataArray = columnData.get(strColName);
-        String metadataPath = getDb_config().getProperty("MetadataPath");
-        FileWriter writer = new FileWriter(metadataPath, true);
-        writer.write(strTableName + "," + strColName + ","+ columnDataArray[2]+","+columnDataArray[3] +","+ strIndexName + ",B+Tree\n");
-}
+
+        String metadataPath = getDbConfig().getProperty("MetadataPath");
+        try (FileWriter writer = new FileWriter(metadataPath, true)) {
+            writer.write(strTableName + "," + strColName + "," + columnDataArray[0] + "," + columnDataArray[1] + "," + strIndexName + ",B+Tree\n");
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
 
 
     // following method inserts one row only.
@@ -202,7 +196,7 @@ public class DBApp {
                     recordNo = 0;
                 }
             } else {
-                Page newPage = new Page(strTableName, currentTable.pagesCount(), Integer.parseInt((String) DBApp.getDb_config().get("MaximumRowsCountinPage")));
+                Page newPage = new Page(strTableName, currentTable.pagesCount(), Integer.parseInt((String) DBApp.getDbConfig().get("MaximumRowsCountinPage")));
                 currentTable.addRecord(htblColNameValue, pKey, newPage);
                 currentTable.addPage(newPage);
                 break;
@@ -287,7 +281,7 @@ public class DBApp {
         return result.iterator();
     }
 
-    public static Properties getDb_config() {
+    public static Properties getDbConfig() {
         if (db_config == null) {
             throw new RuntimeException("DBApp not initialized");
         }
