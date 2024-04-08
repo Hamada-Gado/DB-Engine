@@ -235,7 +235,7 @@ public class DBApp {
                 //loop over metaData file and check if the index exists
                 for (String colName : metaData.keySet()) {
                     // check if index name is not null in meta-data file
-                    if (metaData.get(strTableName).get("IndexName")[0] != null) {
+                    if (!metaData.get(strTableName).get(colName)[2].equals("null")) {
                         indexColumns.add(colName);
                     }
                 }
@@ -267,7 +267,7 @@ public class DBApp {
                         }
                         if (delete) {
                             //remove the record
-                            page.getRecords().remove(j);
+                            table.removeRecord(j,page);
 
                             //if the page is empty, remove it
                             if (page.isEmpty()) {
@@ -295,7 +295,7 @@ public class DBApp {
             //get the index column
             String indexColumn = column;
             //get the index name
-            String indexName = metaData.get(indexColumn).get("IndexName")[0];
+            String indexName = metaData.get(strTableName).get(column)[2];
             //get the index file
             String indexFile = (String) getDb_config().get("DataPath") + "/" + strTableName + "/" + indexName + ".ser";
             //load the index
@@ -304,6 +304,8 @@ public class DBApp {
             Object value = htblColNameValue.get(indexColumn);
             //get the page number of the record
             Double pageNumber = index.search((Integer) value);
+
+//            if (pageNumber == null) {throw new DBAppException("wut da helllllllll");}
 
 
             //get Page
