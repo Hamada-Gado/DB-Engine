@@ -128,7 +128,7 @@ public class DBApp {
     // following method creates a B+tree index
     public void createIndex(String strTableName,
                             String strColName,
-                            String strIndexName) throws DBAppException {
+                            String strIndexName) throws DBAppException, IOException {
         // Load the table from the disk
         Path path = Paths.get((String) db_config.get("DataPath"), strTableName, strTableName + ".ser");
         Table table;
@@ -162,6 +162,13 @@ public class DBApp {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+        //get the metadata
+        Hashtable<String, Hashtable<String, String[]>> metadata = Util.getMetadata(strTableName);
+        Hashtable<String, String[]> columnData = metadata.get(strColName);
+        String[] columnDataArray = columnData.get(strColName);
+        String metadataPath = getDb_config().getProperty("MetadataPath");
+        FileWriter writer = new FileWriter(metadataPath, true);
+        writer.write(strTableName + "," + strColName + ","+ columnDataArray[2]+","+columnDataArray[3] +","+ strIndexName + ",B+Tree\n");
 }
 
 
