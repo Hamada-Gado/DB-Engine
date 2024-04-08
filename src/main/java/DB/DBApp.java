@@ -183,57 +183,49 @@ public class DBApp {
                             String strClusteringKeyValue,
                             Hashtable<String, Object> htblColNameValue) throws DBAppException {
         //return null lw el clusKey msh mwgood
-        if(strClusteringKeyValue == null) {
+        if (strClusteringKeyValue == null) {
             throw new DBAppException("no clustering key is null");
         }
-      //  Path path = Paths.get((String) DBApp.getDb_config().get("DataPath"), strTableName + ".ser");
-        Table table = Table.loadTable(strTableName) ;
+
+        Table table = Table.loadTable(strTableName);
         Hashtable<String, Hashtable<String, String[]>> metaData = Util.getMetadata(strTableName);
 
         //return null lw el table name msh mwgood
-        if(metaData.get(strTableName) == null) {
+        if (metaData.get(strTableName) == null) {
             throw new DBAppException("Table does not exist");
         }
 
-        else{
-            for (String colName : htblColNameValue.keySet()) {
+        for (String colName : htblColNameValue.keySet()) {
 
-                String colType = metaData.get(strTableName).get(colName)[0] ;
+            String colType = metaData.get(strTableName).get(colName)[0];
 
-                if(colType.equals("java.lang.Integer") && !(htblColNameValue.get(colName) instanceof Integer))
-                    throw new DBAppException("Mismatching dataTypes");
+            if (colType.equals("java.lang.Integer") && !(htblColNameValue.get(colName) instanceof Integer))
+                throw new DBAppException("Mismatching dataTypes");
 
-                else if(colType.equals("java.lang.String") && !(htblColNameValue.get(colName) instanceof String))
-                    throw new DBAppException("Mismatching dataTypes");
+            else if (colType.equals("java.lang.String") && !(htblColNameValue.get(colName) instanceof String))
+                throw new DBAppException("Mismatching dataTypes");
 
-                else if(colType.equals("java.lang.Double") && !(htblColNameValue.get(colName) instanceof Double))
-                    throw new DBAppException("Mismatching dataTypes");
-
-                else {
-
-                    int[] info = Util.getRecordPos(strTableName, strClusteringKeyValue, colName);
-                    if (info[2] == 1) {
-                        Page page = table.getPage(info[0]);
-                        Vector<Hashtable<String, Object>> records = page.getRecords();
-                        records.set(info[1],htblColNameValue);
-                        page.updatePage();
-
-                    } else {
-                        throw new DBAppException("Key Not found");
-                    }
-                }
+            else if (colType.equals("java.lang.Double") && !(htblColNameValue.get(colName) instanceof Double))
+                throw new DBAppException("Mismatching dataTypes");
 
 
-
-
-
-
+            int[] info = Util.getRecordPos(strTableName, strClusteringKeyValue, colName);
+            if (info[2] == 0) {
+                throw new DBAppException("Key Not found");
             }
+
+            Page page = table.getPage(info[0]);
+            Vector<Hashtable<String, Object>> records = page.getRecords();
+            Hashtable<String, Object> record = records.get(info[1]);
+            record.forEach((key, value) -> {
+                if (htblColNameValue.containsKey(key)) {
+                    record.put(key, htblColNameValue.get(key));
+                }
+            });
+            records.set(info[1], record);
+            page.updatePage();
         }
-
-        }
-
-
+    }
 
 
     // following method could be used to delete one or more rows.
