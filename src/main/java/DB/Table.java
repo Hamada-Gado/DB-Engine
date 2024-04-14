@@ -145,7 +145,7 @@ public class Table implements Iterable<Page>, Serializable {
      */
 
     public static Table loadTable(String tableName) throws DBAppException {
-        Path path = Paths.get((String) DBApp.getDb_config().get("DataPath"), tableName, tableName + ".ser");
+        Path path = Paths.get((String) DBApp.getDbConfig().get("DataPath"), tableName, tableName + ".ser");
 
         if (!path.toFile().exists()) {
             throw new DBAppException("Table doesn't exit");
