@@ -185,21 +185,28 @@ public class DBApp {
         }
 
         String pKey = metaData.get(strTableName).get("clusteringKey")[0];
-        Object pValue = htblColNameValue.get(pKey);
+        Comparable pValue = (Comparable) htblColNameValue.get(pKey);
 
         Table currentTable = Table.loadTable(strTableName);
 
-        int pageNo = 0;//Placeholder
-        int recordNo = 0;//Placeholder
+        int[] recordPos = Util.getRecordPos(strTableName, pKey, pValue);
+
+        if (recordPos[2] == 1) {
+            throw new DBAppException("Record with the following primary key already exist: (" + pKey + ") " + pValue);
+        }
+
+        int pageNo = recordPos[0];
+        int recordNo = recordPos[1];
+
         for (int i = pageNo; i <= currentTable.pagesCount(); i++) {
             if (i < currentTable.pagesCount()) {
                 Page page = currentTable.getPage(i);
                 if (!currentTable.getPage(i).isFull()) {
-                    currentTable.addRecord(recordNo, htblColNameValue, pKey, page);
+                    currentTable.addRecord(recordNo + 1, htblColNameValue, pKey, page);
                     break;
                 } else {
                     currentTable.addRecord(recordNo, htblColNameValue, pKey, page);
-                    htblColNameValue = currentTable.removeRecord(currentTable.getPage(i).getMax() - 1, page);
+                    htblColNameValue = currentTable.removeRecord(currentTable.getPage(i).getMax() - 1, pKey, page);
                     recordNo = 0;
                 }
             } else {
