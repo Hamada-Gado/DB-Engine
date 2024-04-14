@@ -37,9 +37,12 @@ class Test {
                     recordNo = 0;
                 }
             } else {
+<<<<<<< HEAD
+                Page newPage = currentTable.addPage(Integer.parseInt((String) DBApp.getDb_config().get("MaximumRowsCountinPage")));
+=======
                 Page newPage = new Page(strTableName, currentTable.pagesCount(), Integer.parseInt((String) DBApp.getDbConfig().get("MaximumRowsCountinPage")));
+>>>>>>> dev
                 currentTable.addRecord(htblColNameValue, pKey, newPage);
-                currentTable.addPage(newPage);
                 break;
             }
         }

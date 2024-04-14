@@ -1,8 +1,8 @@
 package DB;
 
-import java.io.BufferedReader;
-import java.io.FileReader;
-import java.io.IOException;
+import BTree.BTree;
+
+import java.io.*;
 import java.util.*;
 
 
@@ -275,4 +275,19 @@ public class Util {
             default -> throw new RuntimeException("Invalid operator");
         };
     }
+
+    // fetch the bplustree index from the disk
+    public static BTree loadIndex(String file){
+        BTree tree = null;
+        try {
+            FileInputStream fileIn = new FileInputStream(file);
+            ObjectInputStream in = new ObjectInputStream(fileIn);
+            tree = (BTree) in.readObject();
+            in.close();
+            fileIn.close();
+        } catch (IOException | ClassNotFoundException e) {
+            throw new RuntimeException(e);
+        }
+        return tree;
+    };
 }
