@@ -61,143 +61,143 @@ public class Table implements Iterable<Page>, Serializable {
     public Page addPage(int max) {
         Page page = new Page(tableName, lastPageNumber++, max);
 
-            page.updatePage();
+        page.updatePage();
 
-            Path path = Paths.get((String) DBApp.getDb_config().get("DataPath"), tableName, page.getPageNumber() + ".ser");
-            pagesPath.add(path.toAbsolutePath().toString());
+        Path path = Paths.get((String) DBApp.getDbConfig().get("DataPath"), tableName, page.getPageNumber() + ".ser");
+        pagesPath.add(path.toAbsolutePath().toString());
 
-            updateTable();
+        updateTable();
 
-            return page;
+        return page;
+    }
+
+    /**
+     * @param index the index of the page
+     * @return the name of the table
+     */
+    public Page getPage(int index) {
+        String path = pagesPath.get(index);
+
+        Page page;
+        try (
+                FileInputStream fileIn = new FileInputStream(path);
+                ObjectInputStream in = new ObjectInputStream(fileIn)) {
+            page = (Page) in.readObject();
+        } catch (IOException | ClassNotFoundException e) {
+            throw new RuntimeException(e);
         }
 
-        /**
-         * @param index the index of the page
-         * @return the name of the table
-         */
-        public Page getPage ( int index){
-            String path = pagesPath.get(index);
+        return page;
+    }
 
-            Page page;
-            try (
-                    FileInputStream fileIn = new FileInputStream(path);
-                    ObjectInputStream in = new ObjectInputStream(fileIn)) {
-                page = (Page) in.readObject();
-            } catch (IOException | ClassNotFoundException e) {
-                throw new RuntimeException(e);
-            }
+    /**
+     * @param pageName the name of the page
+     * @return the page
+     */
+    public Page getPage(String pageName) {
+        Path path = Paths.get((String) DBApp.getDbConfig().get("DataPath"), tableName, pageName + ".ser");
+        int index = pagesPath.indexOf(path.toAbsolutePath().toString());
+        if (index == -1) {
+            throw new RuntimeException("Page not found");
+        } else {
+            return getPage(index);
+        }
+    }
 
-            return page;
+    public int pagesCount() {
+        return pagesPath.size();
+    }
+
+    public void addRecord(Hashtable<String, Object> record, String pKey, Page page) {
+        page.add(record);
+        clusteringKeyMin.add(page.getPageNumber(), (Comparable) page.getRecords().get(0).get(pKey));
+        updateTable();
+    }
+
+    public void addRecord(int recordNo, Hashtable<String, Object> record, String pKey, Page page) {
+        page.add(recordNo, record);
+        clusteringKeyMin.add(page.getPageNumber(), (Comparable) page.getRecords().get(0).get(pKey));
+        updateTable();
+    }
+
+    public Hashtable<String, Object> removeRecord(int recordNo, String pKey, Page page) {
+        Hashtable htbl = page.remove(recordNo);
+        clusteringKeyMin.add(page.getPageNumber(), (Comparable) page.getRecords().get(0).get(pKey));
+        updateTable();
+
+        return htbl;
+    }
+
+    @Override
+    public String toString() {
+        StringBuilder res = new StringBuilder();
+
+        for (Page page : this) {
+            res.append("Page:\n")
+                    .append(page)
+                    .append("\n");
+        }
+        if (pagesCount() > 0) {
+            res.deleteCharAt(res.length() - 1);
         }
 
-        /**
-         * @param pageName the name of the page
-         * @return the page
-         */
-        public Page getPage (String pageName){
-            Path path = Paths.get((String) DBApp.getDbConfig().get("DataPath"), tableName, pageName + ".ser");
-            int index = pagesPath.indexOf(path.toAbsolutePath().toString());
-            if (index == -1) {
-                throw new RuntimeException("Page not found");
-            } else {
-                return getPage(index);
-            }
+        return res.toString();
+    }
+
+    /**
+     * Saves the table to a file
+     *
+     * @param tableName the table to save
+     * @return table deserialize the table from the file
+     */
+
+    public static Table loadTable(String tableName) throws DBAppException {
+        Path path = Paths.get((String) DBApp.getDbConfig().get("DataPath"), tableName, tableName + ".ser");
+
+        if (!path.toFile().exists()) {
+            throw new DBAppException("Table doesn't exit");
         }
 
-        public int pagesCount () {
-            return pagesPath.size();
+        Table table;
+        try (
+                FileInputStream fileIn = new FileInputStream(path.toAbsolutePath().toString());
+                ObjectInputStream in = new ObjectInputStream(fileIn)) {
+            table = (Table) in.readObject();
+        } catch (IOException | ClassNotFoundException e) {
+            throw new RuntimeException(e);
         }
+        return table;
+    }
 
-        public void addRecord (Hashtable < String, Object > record, String pKey, Page page){
-            page.add(record);
-            clusteringKeyMin.add(page.getPageNumber(), (Comparable) page.getRecords().get(0).get(pKey));
-            updateTable();
-        }
+    public @NotNull Iterator<Page> iterator() {
+        return new TableIterator();
+    }
 
-        public void addRecord ( int recordNo, Hashtable<String, Object > record, String pKey, Page page){
-            page.add(recordNo, record);
-            clusteringKeyMin.add(page.getPageNumber(), (Comparable) page.getRecords().get(0).get(pKey));
-            updateTable();
-        }
+    private class TableIterator implements Iterator<Page> {
+        private int pageIndex;
+        private Page page;
 
-        public Hashtable<String, Object> removeRecord ( int recordNo, String pKey, Page page){
-            Hashtable htbl = page.remove(recordNo);
-            clusteringKeyMin.add(page.getPageNumber(), (Comparable) page.getRecords().get(0).get(pKey));
-            updateTable();
-
-            return htbl;
+        public TableIterator() {
+            pageIndex = 0;
+            page = null;
         }
 
         @Override
-        public String toString () {
-            StringBuilder res = new StringBuilder();
-
-            for (Page page : this) {
-                res.append("Page:\n")
-                        .append(page)
-                        .append("\n");
-            }
-            if (pagesCount() > 0) {
-                res.deleteCharAt(res.length() - 1);
-            }
-
-            return res.toString();
+        public boolean hasNext() {
+            return pageIndex < pagesCount();
         }
 
-        /**
-         * Saves the table to a file
-         *
-         * @param tableName the table to save
-         * @return table deserialize the table from the file
-         */
-
-        public static Table loadTable (String tableName) throws DBAppException {
-            Path path = Paths.get((String) DBApp.getDbConfig().get("DataPath"), tableName, tableName + ".ser");
-
-            if (!path.toFile().exists()) {
-                throw new DBAppException("Table doesn't exit");
+        @Override
+        public Page next() { //this method is used to get the next page
+            if (!hasNext()) {
+                throw new RuntimeException("No more records");
             }
 
-            Table table;
-            try (
-                    FileInputStream fileIn = new FileInputStream(path.toAbsolutePath().toString());
-                    ObjectInputStream in = new ObjectInputStream(fileIn)) {
-                table = (Table) in.readObject();
-            } catch (IOException | ClassNotFoundException e) {
-                throw new RuntimeException(e);
-            }
-            return table;
-        }
+            page = getPage(pageIndex);
+            pageIndex++;
 
-        public @NotNull Iterator<Page> iterator () {
-            return new TableIterator();
-        }
-
-        private class TableIterator implements Iterator<Page> {
-            private int pageIndex;
-            private Page page;
-
-            public TableIterator() {
-                pageIndex = 0;
-                page = null;
-            }
-
-            @Override
-            public boolean hasNext() {
-                return pageIndex < pagesCount();
-            }
-
-            @Override
-            public Page next() { //this method is used to get the next page
-                if (!hasNext()) {
-                    throw new RuntimeException("No more records");
-                }
-
-                page = getPage(pageIndex);
-                pageIndex++;
-
-                return page;
-            }
+            return page;
         }
     }
 }
+
