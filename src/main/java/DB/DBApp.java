@@ -1,5 +1,6 @@
 package DB;
 
+import BTree.BTree;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.*;
@@ -35,7 +36,7 @@ public class DBApp {
         }
 
         // Create the data folder if it doesn't exist
-        File dataFolder = new File("src/main/resources/data");
+        File dataFolder = new File(getDbConfig().getProperty("DataPath"));
         if (!dataFolder.exists()) {
             boolean newDir = dataFolder.mkdirs();
             if (!newDir) {
@@ -133,13 +134,18 @@ public class DBApp {
         Table table = Table.loadTable(strTableName);
 
         // Create a new B+ tree
-        bplustree bpt = new bplustree(Integer.parseInt(getDbConfig().getProperty("NodeSize")));
+        BTree bpt = new BTree();
 
         // Iterate over all the records in the table
-        for (Page page : table) {
+        for (int i = 0; i < table.pagesCount(); i++) {
+            Page page = table.getPage(i);
+            Vector<Integer> recordPages;
             for (Hashtable<String, Object> record : page.getRecords()) {
-                // Insert the value of the column and the record's primary key into the B+ tree
-                bpt.insert((int) record.get(strColName), 0); // el 7eta di msh tamam/fix
+                // Insert the value of the column and the record's key into the B+ tree
+                Vector<Integer> search = (Vector) bpt.search((Comparable) record.get(strColName));
+                recordPages = search == null ? new Vector<>() : search;
+                recordPages.add(i);
+                bpt.insert((Comparable) record.get(strColName), recordPages);
             }
         }
 
@@ -152,7 +158,8 @@ public class DBApp {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-        //get the metadata
+
+        // get metadata
         Hashtable<String, Hashtable<String, String[]>> metadata = Util.getMetadata(strTableName);
         Hashtable<String, String[]> columnData = metadata.get(strTableName);
         String[] columnDataArray = columnData.get(strColName);
