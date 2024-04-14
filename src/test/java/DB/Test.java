@@ -33,11 +33,15 @@ class Test {
                     break;
                 } else {
                     currentTable.addRecord(recordNo, htblColNameValue, pKey, page);
-                    htblColNameValue = currentTable.removeRecord(currentTable.getPage(i).getMax() - 1, page);
+                    htblColNameValue = currentTable.removeRecord(currentTable.getPage(i).getMax() - 1, pKey, page);
                     recordNo = 0;
                 }
             } else {
+<<<<<<< HEAD
                 Page newPage = currentTable.addPage(Integer.parseInt((String) DBApp.getDb_config().get("MaximumRowsCountinPage")));
+=======
+                Page newPage = new Page(strTableName, currentTable.pagesCount(), Integer.parseInt((String) DBApp.getDbConfig().get("MaximumRowsCountinPage")));
+>>>>>>> dev
                 currentTable.addRecord(htblColNameValue, pKey, newPage);
                 break;
             }
@@ -284,5 +288,41 @@ class Test {
             e.printStackTrace();
             assertTrue(false);
         }
+    }
+
+    @org.junit.jupiter.api.Test
+    void test500Inserts() {
+        long time = System.nanoTime();
+
+        String strTableName = "Test500";
+        DBApp dbApp = new DBApp();
+
+        Hashtable htblColNameType = new Hashtable();
+        htblColNameType.put("id", "java.lang.Integer");
+        htblColNameType.put("name", "java.lang.String");
+        htblColNameType.put("gpa", "java.lang.Double");
+        try {
+            dbApp.createTable(strTableName, "id", htblColNameType);
+        } catch (DBAppException e) {
+            e.printStackTrace();
+            assertFalse(true);
+        }
+
+        Hashtable record = new Hashtable();
+        for (int i = 0; i < 500; i++) {
+            record.put("id", i);
+            record.put("name", "student: " + i);
+            record.put("gpa", 5.0);
+            try {
+                dbApp.insertIntoTable(strTableName, record);
+            } catch (DBAppException e) {
+                e.printStackTrace();
+                assertFalse(true);
+            }
+        }
+
+        time = (System.nanoTime() - time) / 1000000000;
+        System.out.println("Time taken: " + time + " secs");
+        System.out.println(Table.loadTable(strTableName));
     }
 }

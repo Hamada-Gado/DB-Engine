@@ -1,5 +1,7 @@
 package DB;
 
+import BTree.BTree;
+
 import java.io.*;
 import java.util.*;
 
@@ -28,7 +30,7 @@ public class Util {
      */
     public static Hashtable<String, Hashtable<String, String[]>> getMetadata(String tableName) {
         Hashtable<String, Hashtable<String, String[]>> metadata = new Hashtable<>();
-        String metadataPath = DBApp.getDb_config().getProperty("MetadataPath");
+        String metadataPath = DBApp.getDbConfig().getProperty("MetadataPath");
 
         try (BufferedReader br = new BufferedReader(new FileReader(metadataPath))) {
             br.readLine(); // Skip the header
@@ -275,12 +277,12 @@ public class Util {
     }
 
     // fetch the bplustree index from the disk
-    public static bplustree loadIndex(String file){
-        bplustree tree = null;
+    public static BTree loadIndex(String file){
+        BTree tree = null;
         try {
             FileInputStream fileIn = new FileInputStream(file);
             ObjectInputStream in = new ObjectInputStream(fileIn);
-            tree = (bplustree) in.readObject();
+            tree = (BTree) in.readObject();
             in.close();
             fileIn.close();
         } catch (IOException | ClassNotFoundException e) {
