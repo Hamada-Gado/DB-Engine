@@ -212,8 +212,49 @@ public class DBApp {
     public void updateTable(String strTableName,
                             String strClusteringKeyValue,
                             Hashtable<String, Object> htblColNameValue) throws DBAppException {
+        //return null lw el clusKey msh mwgood
+        if (strClusteringKeyValue == null) {
+            throw new DBAppException("no clustering key is null");
+        }
 
-        throw new DBAppException("not implemented yet");
+        Table table = Table.loadTable(strTableName);
+        Hashtable<String, Hashtable<String, String[]>> metaData = Util.getMetadata(strTableName);
+
+        //return null lw el table name msh mwgood
+        if (metaData.get(strTableName) == null) {
+            throw new DBAppException("Table does not exist");
+        }
+
+        for (String colName : htblColNameValue.keySet()) {
+
+            String colType = metaData.get(strTableName).get(colName)[0];
+
+            if (colType.equals("java.lang.Integer") && !(htblColNameValue.get(colName) instanceof Integer))
+                throw new DBAppException("Mismatching dataTypes");
+
+            else if (colType.equals("java.lang.String") && !(htblColNameValue.get(colName) instanceof String))
+                throw new DBAppException("Mismatching dataTypes");
+
+            else if (colType.equals("java.lang.Double") && !(htblColNameValue.get(colName) instanceof Double))
+                throw new DBAppException("Mismatching dataTypes");
+
+
+            int[] info = Util.getRecordPos(strTableName, strClusteringKeyValue, colName);
+            if (info[2] == 0) {
+                throw new DBAppException("Key Not found");
+            }
+
+            Page page = table.getPage(info[0]);
+            Vector<Hashtable<String, Object>> records = page.getRecords();
+            Hashtable<String, Object> record = records.get(info[1]);
+            record.forEach((key, value) -> {
+                if (htblColNameValue.containsKey(key)) {
+                    record.put(key, htblColNameValue.get(key));
+                }
+            });
+            records.set(info[1], record);
+            page.updatePage();
+        }
     }
 
 
