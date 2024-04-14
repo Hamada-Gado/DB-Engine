@@ -30,7 +30,7 @@ public class Util {
      */
     public static Hashtable<String, Hashtable<String, String[]>> getMetadata(String tableName) {
         Hashtable<String, Hashtable<String, String[]>> metadata = new Hashtable<>();
-        String metadataPath = DBApp.getDb_config().getProperty("MetadataPath");
+        String metadataPath = DBApp.getDbConfig().getProperty("MetadataPath");
 
         try (BufferedReader br = new BufferedReader(new FileReader(metadataPath))) {
             br.readLine(); // Skip the header

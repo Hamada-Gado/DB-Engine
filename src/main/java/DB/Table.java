@@ -41,7 +41,7 @@ public class Table implements Iterable<Page>, Serializable {
      * Serialize the table only not the pages
      */
     public void updateTable() {
-        Path path = Paths.get((String) DBApp.getDb_config().get("DataPath"), tableName, tableName + ".ser");
+        Path path = Paths.get((String) DBApp.getDbConfig().get("DataPath"), tableName, tableName + ".ser");
         try (
                 FileOutputStream fileOut = new FileOutputStream(path.toAbsolutePath().toString());
                 ObjectOutputStream out = new ObjectOutputStream(fileOut)) {
@@ -58,7 +58,7 @@ public class Table implements Iterable<Page>, Serializable {
      *             serialize the page and add its path to the table
      */
     public void addPage(@NotNull Page page) {
-        Path path = Paths.get((String) DBApp.getDb_config().get("DataPath"), tableName, page.getPageNumber() + ".ser");
+        Path path = Paths.get((String) DBApp.getDbConfig().get("DataPath"), tableName, page.getPageNumber() + ".ser");
         page.updatePage();
         pagesPath.add(path.toAbsolutePath().toString());
         updateTable();
@@ -88,7 +88,7 @@ public class Table implements Iterable<Page>, Serializable {
      * @return the page
      */
     public Page getPage(String pageName) {
-        Path path = Paths.get((String) DBApp.getDb_config().get("DataPath"), tableName, pageName + ".ser");
+        Path path = Paths.get((String) DBApp.getDbConfig().get("DataPath"), tableName, pageName + ".ser");
         int index = pagesPath.indexOf(path.toAbsolutePath().toString());
         if (index == -1) {
             throw new RuntimeException("Page not found");
@@ -141,6 +141,7 @@ public class Table implements Iterable<Page>, Serializable {
      * @param tableName the table to save
      * @return table deserialize the table from the file
      */
+
     public static Table loadTable(String tableName) throws DBAppException {
         Path path = Paths.get((String) DBApp.getDb_config().get("DataPath"), tableName, tableName + ".ser");
 
