@@ -37,18 +37,17 @@ public class Table implements Iterable<Page>, Serializable {
         return clusteringKeyMin;
     }
 
+    /**
+     * Serialize the table only not the pages
+     */
     public void updateTable() {
-        Path path = Paths.get((String) DBApp.getDb_config().get("DataPath"), tableName, tableName + ".ser");
+        Path path = Paths.get((String) DBApp.getDbConfig().get("DataPath"), tableName, tableName + ".ser");
         try (
                 FileOutputStream fileOut = new FileOutputStream(path.toAbsolutePath().toString());
                 ObjectOutputStream out = new ObjectOutputStream(fileOut)) {
             out.writeObject(this);
         } catch (IOException e) {
             throw new RuntimeException(e);
-        }
-
-        for (Page page : this) {
-            page.updatePage();
         }
     }
 
@@ -59,7 +58,7 @@ public class Table implements Iterable<Page>, Serializable {
      *             serialize the page and add its path to the table
      */
     public void addPage(@NotNull Page page) {
-        Path path = Paths.get((String) DBApp.getDb_config().get("DataPath"), tableName, page.getPageNumber() + ".ser");
+        Path path = Paths.get((String) DBApp.getDbConfig().get("DataPath"), tableName, page.getPageNumber() + ".ser");
         page.updatePage();
         pagesPath.add(path.toAbsolutePath().toString());
         updateTable();
@@ -89,7 +88,7 @@ public class Table implements Iterable<Page>, Serializable {
      * @return the page
      */
     public Page getPage(String pageName) {
-        Path path = Paths.get((String) DBApp.getDb_config().get("DataPath"), tableName, pageName + ".ser");
+        Path path = Paths.get((String) DBApp.getDbConfig().get("DataPath"), tableName, pageName + ".ser");
         int index = pagesPath.indexOf(path.toAbsolutePath().toString());
         if (index == -1) {
             throw new RuntimeException("Page not found");
@@ -105,16 +104,19 @@ public class Table implements Iterable<Page>, Serializable {
     public void addRecord(Hashtable<String, Object> record, String pKey, Page page) {
         page.add(record);
         clusteringKeyMin.add(page.getPageNumber(), (Comparable) page.getRecords().get(0).get(pKey));
+        updateTable();
     }
 
     public void addRecord(int recordNo, Hashtable<String, Object> record, String pKey, Page page) {
         page.add(recordNo, record);
         clusteringKeyMin.add(page.getPageNumber(), (Comparable) page.getRecords().get(0).get(pKey));
+        updateTable();
     }
 
-    public Hashtable<String, Object> removeRecord(int recordNo, Page page) {
+    public Hashtable<String, Object> removeRecord(int recordNo, String pKey, Page page) {
         Hashtable htbl = page.remove(recordNo);
-        clusteringKeyMin.add(page.getPageNumber(), (Comparable) page.getRecords().get(0));
+        clusteringKeyMin.add(page.getPageNumber(), (Comparable) page.getRecords().get(0).get(pKey));
+        updateTable();
 
         return htbl;
     }
@@ -128,7 +130,9 @@ public class Table implements Iterable<Page>, Serializable {
                     .append(page)
                     .append("\n");
         }
-        res.deleteCharAt(res.length() - 1);
+        if (pagesCount() > 0) {
+            res.deleteCharAt(res.length() - 1);
+        }
 
         return res.toString();
     }
@@ -139,8 +143,14 @@ public class Table implements Iterable<Page>, Serializable {
      * @param tableName the table to save
      * @return table deserialize the table from the file
      */
-    public static Table loadTable(String tableName) {
-        Path path = Paths.get((String) DBApp.getDb_config().get("DataPath"), tableName, tableName + ".ser");
+
+    public static Table loadTable(String tableName) throws DBAppException {
+        Path path = Paths.get((String) DBApp.getDbConfig().get("DataPath"), tableName, tableName + ".ser");
+
+        if (!path.toFile().exists()) {
+            throw new DBAppException("Table doesn't exit");
+        }
+
         Table table;
         try (
                 FileInputStream fileIn = new FileInputStream(path.toAbsolutePath().toString());
@@ -150,15 +160,6 @@ public class Table implements Iterable<Page>, Serializable {
             throw new RuntimeException(e);
         }
         return table;
-    }
-
-    public static void deleteTable(String tableName) {
-        Path path = Paths.get((String) DBApp.getDb_config().get("DataPath"), tableName);
-        try {
-            Files.delete(path);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
     }
 
     public @NotNull Iterator<Page> iterator() {

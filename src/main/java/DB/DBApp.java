@@ -1,5 +1,6 @@
 package DB;
 
+import BTree.BTree;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.*;
@@ -35,7 +36,7 @@ public class DBApp {
         }
 
         // Create the data folder if it doesn't exist
-        File dataFolder = new File("src/main/resources/data");
+        File dataFolder = new File(getDbConfig().getProperty("DataPath"));
         if (!dataFolder.exists()) {
             boolean newDir = dataFolder.mkdirs();
             if (!newDir) {
@@ -44,7 +45,7 @@ public class DBApp {
         }
 
         // Create the metadata folder if it doesn't exist
-        File metadataFile = new File(getDb_config().getProperty("MetadataPath"));
+        File metadataFile = new File(getDbConfig().getProperty("MetadataPath"));
         if (!metadataFile.exists()) {
             try {
                 boolean newFile = metadataFile.createNewFile();
@@ -87,11 +88,11 @@ public class DBApp {
             }
         }
 
-        String metadataPath = getDb_config().getProperty("MetadataPath");
+        String metadataPath = getDbConfig().getProperty("MetadataPath");
 
         // create a new table, and parent folder
         Table table = new Table(strTableName);
-        Path tablePath = Paths.get((String) getDb_config().get("DataPath"), strTableName);
+        Path tablePath = Paths.get((String) getDbConfig().get("DataPath"), strTableName);
         File file = new File(tablePath.toAbsolutePath().toString());
         if (!file.exists()) {
             boolean newDir = file.mkdirs();
@@ -114,7 +115,7 @@ public class DBApp {
         }
 
         // save table to disk
-        Path path = Paths.get((String) getDb_config().get("DataPath"), strTableName, strTableName + ".ser");
+        Path path = Paths.get((String) getDbConfig().get("DataPath"), strTableName, strTableName + ".ser");
         try (
                 FileOutputStream fileOut = new FileOutputStream(path.toAbsolutePath().toString());
                 ObjectOutputStream out = new ObjectOutputStream(fileOut)) {
@@ -129,8 +130,46 @@ public class DBApp {
     public void createIndex(String strTableName,
                             String strColName,
                             String strIndexName) throws DBAppException {
+        // Load the table from the disk
+        Table table = Table.loadTable(strTableName);
 
-        throw new DBAppException("not implemented yet");
+        // Create a new B+ tree
+        BTree bpt = new BTree();
+
+        // Iterate over all the records in the table
+        for (int i = 0; i < table.pagesCount(); i++) {
+            Page page = table.getPage(i);
+            Vector<Integer> recordPages;
+            for (Hashtable<String, Object> record : page.getRecords()) {
+                // Insert the value of the column and the record's key into the B+ tree
+                Vector<Integer> search = (Vector) bpt.search((Comparable) record.get(strColName));
+                recordPages = search == null ? new Vector<>() : search;
+                recordPages.add(i);
+                bpt.insert((Comparable) record.get(strColName), recordPages);
+            }
+        }
+
+        // Save the B+ tree to the disk
+        Path indexPath = Paths.get((String) getDbConfig().get("DataPath"), strTableName, strIndexName + ".ser");
+        try (
+                FileOutputStream fileOut = new FileOutputStream(indexPath.toAbsolutePath().toString());
+                ObjectOutputStream out = new ObjectOutputStream(fileOut)) {
+            out.writeObject(bpt);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
+        // get metadata
+        Hashtable<String, Hashtable<String, String[]>> metadata = Util.getMetadata(strTableName);
+        Hashtable<String, String[]> columnData = metadata.get(strTableName);
+        String[] columnDataArray = columnData.get(strColName);
+
+        String metadataPath = getDbConfig().getProperty("MetadataPath");
+        try (FileWriter writer = new FileWriter(metadataPath, true)) {
+            writer.write(strTableName + "," + strColName + "," + columnDataArray[0] + "," + columnDataArray[1] + "," + strIndexName + ",B+Tree\n");
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
 
@@ -146,32 +185,37 @@ public class DBApp {
         }
 
         String pKey = metaData.get(strTableName).get("clusteringKey")[0];
-        Object pValue = htblColNameValue.get(pKey);
+        Comparable pValue = (Comparable) htblColNameValue.get(pKey);
 
         Table currentTable = Table.loadTable(strTableName);
 
-        int pageNo = 0;//Placeholder
-        int recordNo = 0;//Placeholder
+        int[] recordPos = Util.getRecordPos(strTableName, pKey, pValue);
+
+        if (recordPos[2] == 1) {
+            throw new DBAppException("Record with the following primary key already exist: (" + pKey + ") " + pValue);
+        }
+
+        int pageNo = recordPos[0];
+        int recordNo = recordPos[1];
+
         for (int i = pageNo; i <= currentTable.pagesCount(); i++) {
             if (i < currentTable.pagesCount()) {
                 Page page = currentTable.getPage(i);
                 if (!currentTable.getPage(i).isFull()) {
-                    currentTable.addRecord(recordNo, htblColNameValue, pKey, page);
+                    currentTable.addRecord(recordNo + 1, htblColNameValue, pKey, page);
                     break;
                 } else {
                     currentTable.addRecord(recordNo, htblColNameValue, pKey, page);
-                    htblColNameValue = currentTable.removeRecord(currentTable.getPage(i).getMax() - 1, page);
+                    htblColNameValue = currentTable.removeRecord(currentTable.getPage(i).getMax() - 1, pKey, page);
                     recordNo = 0;
                 }
             } else {
-                Page newPage = new Page(strTableName, currentTable.pagesCount(), Integer.parseInt((String) DBApp.getDb_config().get("MaximumRowsCountinPage")));
+                Page newPage = new Page(strTableName, currentTable.pagesCount(), Integer.parseInt((String) DBApp.getDbConfig().get("MaximumRowsCountinPage")));
                 currentTable.addRecord(htblColNameValue, pKey, newPage);
                 currentTable.addPage(newPage);
                 break;
             }
         }
-
-        currentTable.updateTable();
     }
 
 
@@ -182,8 +226,49 @@ public class DBApp {
     public void updateTable(String strTableName,
                             String strClusteringKeyValue,
                             Hashtable<String, Object> htblColNameValue) throws DBAppException {
+        //return null lw el clusKey msh mwgood
+        if (strClusteringKeyValue == null) {
+            throw new DBAppException("no clustering key is null");
+        }
 
-        throw new DBAppException("not implemented yet");
+        Table table = Table.loadTable(strTableName);
+        Hashtable<String, Hashtable<String, String[]>> metaData = Util.getMetadata(strTableName);
+
+        //return null lw el table name msh mwgood
+        if (metaData.get(strTableName) == null) {
+            throw new DBAppException("Table does not exist");
+        }
+
+        for (String colName : htblColNameValue.keySet()) {
+
+            String colType = metaData.get(strTableName).get(colName)[0];
+
+            if (colType.equals("java.lang.Integer") && !(htblColNameValue.get(colName) instanceof Integer))
+                throw new DBAppException("Mismatching dataTypes");
+
+            else if (colType.equals("java.lang.String") && !(htblColNameValue.get(colName) instanceof String))
+                throw new DBAppException("Mismatching dataTypes");
+
+            else if (colType.equals("java.lang.Double") && !(htblColNameValue.get(colName) instanceof Double))
+                throw new DBAppException("Mismatching dataTypes");
+
+
+            int[] info = Util.getRecordPos(strTableName, strClusteringKeyValue, colName);
+            if (info[2] == 0) {
+                throw new DBAppException("Key Not found");
+            }
+
+            Page page = table.getPage(info[0]);
+            Vector<Hashtable<String, Object>> records = page.getRecords();
+            Hashtable<String, Object> record = records.get(info[1]);
+            record.forEach((key, value) -> {
+                if (htblColNameValue.containsKey(key)) {
+                    record.put(key, htblColNameValue.get(key));
+                }
+            });
+            records.set(info[1], record);
+            page.updatePage();
+        }
     }
 
 
@@ -251,7 +336,7 @@ public class DBApp {
         return result.iterator();
     }
 
-    public static Properties getDb_config() {
+    public static Properties getDbConfig() {
         if (db_config == null) {
             throw new RuntimeException("DBApp not initialized");
         }

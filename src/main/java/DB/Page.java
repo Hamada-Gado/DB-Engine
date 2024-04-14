@@ -28,7 +28,7 @@ public class Page implements Serializable {
     }
 
     public void updatePage() {
-        Path path = Paths.get((String) DBApp.getDb_config().get("DataPath"), tableName, pageNumber + ".ser");
+        Path path = Paths.get((String) DBApp.getDbConfig().get("DataPath"), tableName, pageNumber + ".ser");
         try (
                 FileOutputStream fileOut = new FileOutputStream(path.toAbsolutePath().toString());
                 ObjectOutputStream out = new ObjectOutputStream(fileOut)) {
