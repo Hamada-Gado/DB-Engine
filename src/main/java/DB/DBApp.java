@@ -134,7 +134,7 @@ public class DBApp {
         Table table = Table.loadTable(strTableName);
 
         // Create a new B+ tree
-        DBBTree bpt = new DBBTree();
+        DBBTree bpt = new DBBTree(strTableName, strIndexName);
 
         // Iterate over all the records in the table
         for (int i = 0; i < table.pagesCount(); i++) {
