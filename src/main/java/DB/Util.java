@@ -108,6 +108,11 @@ public class Util {
 
                 leftPage = midPage + 1;
             } else {
+                if (midPage == 0) {
+                    pageNumber = 0;
+                    break;
+                }
+
                 rightPage = midPage - 1;
             }
         }
@@ -277,7 +282,7 @@ public class Util {
     }
 
     // fetch the bplustree index from the disk
-    public static BTree loadIndex(String file){
+    public static BTree loadIndex(String file) {
         BTree tree = null;
         try {
             FileInputStream fileIn = new FileInputStream(file);
@@ -289,5 +294,7 @@ public class Util {
             throw new RuntimeException(e);
         }
         return tree;
-    };
+    }
+
+    ;
 }

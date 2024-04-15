@@ -445,7 +445,7 @@ public class DBApp {
                 throw new DBAppException("Invalid operator");
             }
 
-            Util.validateTypes(term._strColumnName, new Hashtable<>(Map.of(term._strColumnName, term._objValue)));
+            Util.validateTypes(arrSQLTerms[0]._strTableName, new Hashtable<>(Map.of(term._strColumnName, term._objValue)));
         }
 
         String tableName = arrSQLTerms[0]._strTableName;
