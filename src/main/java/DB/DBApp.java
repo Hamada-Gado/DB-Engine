@@ -365,7 +365,7 @@ public class DBApp {
             //get the value of the index column in the condition
             Object value = htblColNameValue.get(indexColumn);
             //get the page number of the record
-            Double pageNumber = (Double) index.search((Integer) value);
+            Double pageNumber = (Double) index.search((Integer) value); //<--- FIXXXX ZIS SHIT
 
 //            if (pageNumber == null) {throw new DBAppException("wut da helllllllll");}
 
