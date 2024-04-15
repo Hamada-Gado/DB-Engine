@@ -122,6 +122,7 @@ public class Table implements Iterable<Page>, Serializable {
 
     public Hashtable<String, Object> removeRecord(int recordNo, String pKey, Page page) {
         Hashtable htbl = page.remove(recordNo);
+        // update clustering key min
         clusteringKeyMin.add(page.getPageNumber(), (Comparable) page.getRecords().get(0).get(pKey));
         updateTable();
 

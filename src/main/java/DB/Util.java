@@ -276,18 +276,5 @@ public class Util {
         };
     }
 
-    // fetch the bplustree index from the disk
-    public static BTree loadIndex(String file){
-        BTree tree = null;
-        try {
-            FileInputStream fileIn = new FileInputStream(file);
-            ObjectInputStream in = new ObjectInputStream(fileIn);
-            tree = (BTree) in.readObject();
-            in.close();
-            fileIn.close();
-        } catch (IOException | ClassNotFoundException e) {
-            throw new RuntimeException(e);
-        }
-        return tree;
-    };
+
 }

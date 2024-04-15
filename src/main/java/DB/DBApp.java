@@ -1,6 +1,7 @@
 package DB;
 
 import BTree.BTree;
+import BTree.DBBTree;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.*;
@@ -134,16 +135,16 @@ public class DBApp {
         Table table = Table.loadTable(strTableName);
 
         // Create a new B+ tree
-        BTree bpt = new BTree();
+        DBBTree bpt = new DBBTree();
 
         // Iterate over all the records in the table
         for (int i = 0; i < table.pagesCount(); i++) {
             Page page = table.getPage(i);
-            Vector<Integer> recordPages;
+            LinkedList<Integer> recordPages;
             for (Hashtable<String, Object> record : page.getRecords()) {
                 // Insert the value of the column and the record's key into the B+ tree
-                Vector<Integer> search = (Vector) bpt.search((Comparable) record.get(strColName));
-                recordPages = search == null ? new Vector<>() : search;
+                LinkedList<Integer> search = bpt.search((Comparable) record.get(strColName));
+                recordPages = search == null ? new LinkedList<>() : search;
                 recordPages.add(i);
                 bpt.insert((Comparable) record.get(strColName), recordPages);
             }
@@ -334,7 +335,7 @@ public class DBApp {
                 }
                 if (delete) {
                     //remove the record
-                    table.removeRecord(j,pKey ,page);
+                    table.removeRecord(j, pKey, page);
 
                     //if the page is empty, remove it
                     if (page.isEmpty()) {
@@ -348,78 +349,139 @@ public class DBApp {
         table.updateTable(); //serialize the table
     }
 
-    public void deleteFromTableHelper(String strTableName,
-                                      Hashtable<String, Object> htblColNameValue,
-                                      ArrayList<String> indexColumns, Table table, Hashtable<String, Hashtable<String, String[]>> metaData) throws DBAppException {
-        Page p = null;
-        //loop over the index columns
-        for (String column : indexColumns) {
-            //get the index column
-            String indexColumn = column;
-            //get the index name
-            String indexName = metaData.get(strTableName).get(column)[2];
-            //get the index file
-            String indexFile = (String) getDbConfig().get("DataPath") + "/" + strTableName + "/" + indexName + ".ser";
-            //load the index
-            BTree index = Util.loadIndex(indexFile);
-            //get the value of the index column in the condition
-            Object value = htblColNameValue.get(indexColumn);
-            //get the page number of the record
-            Double pageNumber = (Double) index.search((Integer) value); //<--- FIXXXX ZIS SHIT
+    private void deleteFromTableHelper(String strTableName,
+                                       Hashtable<String, Object> htblColNameValue,
+                                       ArrayList<String> indexColumns,
+                                       Table table,
+                                       Hashtable<String, Hashtable<String, String[]>> metaData) throws DBAppException {
+        // Set to store the result
+        HashSet<Integer> result = new HashSet<>();
 
-//            if (pageNumber == null) {throw new DBAppException("wut da helllllllll");}
+        // 1. Get B+Tree information for the index
+        for (String colName : indexColumns) {
+            String indexName = metaData.get(strTableName).get(colName)[2];
+            DBBTree BPlusTree = DBBTree.loadIndex(strTableName, indexName);
 
+            // 2. Use B+Tree to get leaf pages containing records to potentially delete
+            HashSet<Integer> res = new HashSet<>();
 
-            //get Page
-            p = table.getPage(pageNumber.intValue()); //<--- not sure if this is correct
-
-            //deleting from BPTree the value and updating BPTree
-            index.delete((Integer) value);
-
-            //save the index on disk
-            Path indexPath = Paths.get((String) db_config.get("DataPath"), strTableName, indexName + ".ser");
-            try {
-                FileOutputStream fileOut = new FileOutputStream(indexPath.toAbsolutePath().toString());
-                ObjectOutputStream out = new ObjectOutputStream(fileOut);
-                out.writeObject(index);
-                out.close();
-                fileOut.close();
-            } catch (IOException e) {
-                throw new RuntimeException(e);
+            //3. loop over the columns in the condition
+                Object value = htblColNameValue.get(colName);
+                if(value == null) continue;
+                LinkedList<Integer> search = BPlusTree.search((Comparable) value);
+                if (search != null) {
+                    res.addAll(search);
             }
+                //4. if the result is empty, then there is no record to delete
+                if(result.isEmpty())
+                    result.addAll(res);
+                else
+                    result.retainAll(res);
+        }
 
-
-            //iterate over the records in the page
-            for (int j = 0; j < p.getRecords().size(); j++) {
-                // get the record
-                Hashtable<String, Object> record = p.getRecords().get(j);
-                boolean delete = true;
-                //key-set is the columns in the record
-                //loop over the columns in the record
-                for (String colName : htblColNameValue.keySet()) {
-                    //if the record does not have the column or the value is not equal to the value in the condition
-                    //get() gets the value of the column
-                    if (!record.get(colName).equals(htblColNameValue.get(colName))) {
-                        delete = false;
-                        break;
+        // 5. Iterate over the pages to delete the records
+for (int i = 0; i < table.pagesCount(); i++) {
+            if (result.contains(i)) {
+                Page page = table.getPage(i);
+                for (int j = 0; j < page.getRecords().size(); j++) {
+                    Hashtable<String, Object> record = page.getRecords().get(j);
+                    boolean delete = true;
+                    for (String colName : htblColNameValue.keySet()) {
+                        if (!record.get(colName).equals(htblColNameValue.get(colName))) {
+                            delete = false;
+                            break;
+                        }
                     }
-                }
-                if (delete) {
-                    //remove the record
-                    p.getRecords().remove(j);
-
-                    //if the page is empty, remove it
-                    if (p.isEmpty()) {
-                        table.getPagesPath().remove(pageNumber.intValue());
-
-                    } else {
-                        p.updatePage(); //serialize the page
+                    if (delete) {
+                        page.getRecords().remove(j);
+                        if (page.isEmpty()) {
+                            table.getPagesPath().remove(i);
+                        } else {
+                            page.updatePage();
+                        }
                     }
                 }
             }
         }
-        table.updateTable(); //serialize the table
+
+        // 6. Update table metadata (optional)
+        table.updateTable();
     }
+
+
+//    public void deleteFromTableHelper(String strTableName,
+//                                      Hashtable<String, Object> htblColNameValue,
+//                                      ArrayList<String> indexColumns, Table table, Hashtable<String, Hashtable<String, String[]>> metaData) throws DBAppException {
+//        Page p = null;
+//        //loop over the index columns
+//        for (String column : indexColumns) {
+//            //get the index column
+//            String indexColumn = column;
+//            //get the index name
+//            String indexName = metaData.get(strTableName).get(column)[2];
+//            //load the index
+//            DBBTree index = DBBTree.loadIndex(strTableName, indexName);
+//            //get the value of the index column in the condition
+//            Object value = htblColNameValue.get(indexColumn);
+//            //get the page number of the record
+//            LinkedList<Integer> pageNumbers = index.search((Integer) value);
+//
+//
+//
+//
+////            if (pageNumber == null) {throw new DBAppException("wut da helllllllll");}
+//
+//
+//            //get Page
+//            p = table.getPage(pageNumbers.get(0)); //<--- not sure if this is correct
+//
+//            //deleting from BPTree the value and updating BPTree
+//            index.delete((Integer) value);
+//
+//            //save the index on disk
+//            Path indexPath = Paths.get((String) db_config.get("DataPath"), strTableName, indexName + ".ser");
+//            try {
+//                FileOutputStream fileOut = new FileOutputStream(indexPath.toAbsolutePath().toString());
+//                ObjectOutputStream out = new ObjectOutputStream(fileOut);
+//                out.writeObject(index);
+//                out.close();
+//                fileOut.close();
+//            } catch (IOException e) {
+//                throw new RuntimeException(e);
+//            }
+//
+//
+//            //iterate over the records in the page
+//            for (int j = 0; j < p.getRecords().size(); j++) {
+//                // get the record
+//                Hashtable<String, Object> record = p.getRecords().get(j);
+//                boolean delete = true;
+//                //key-set is the columns in the record
+//                //loop over the columns in the record
+//                for (String colName : htblColNameValue.keySet()) {
+//                    //if the record does not have the column or the value is not equal to the value in the condition
+//                    //get() gets the value of the column
+//                    if (!record.get(colName).equals(htblColNameValue.get(colName))) {
+//                        delete = false;
+//                        break;
+//                    }
+//                }
+//                if (delete) {
+//                    //remove the record
+//                    p.getRecords().remove(j);
+//
+//                    //if the page is empty, remove it
+//                    if (p.isEmpty()) {
+//                        table.getPagesPath().remove(pageNumbers.get(0));
+//
+//                    } else {
+//                        p.updatePage(); //serialize the page
+//                    }
+//                }
+//            }
+//        }
+//        table.updateTable(); //serialize the table
+//    }
 
 
     // select * from student where name = "John Noor" OR gpa = 1.5 AND id = 2343432;
