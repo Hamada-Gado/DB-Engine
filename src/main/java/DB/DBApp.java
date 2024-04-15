@@ -1,6 +1,6 @@
 package DB;
 
-import BTree.BTree;
+import BTree.DBBTree;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.*;
@@ -134,16 +134,16 @@ public class DBApp {
         Table table = Table.loadTable(strTableName);
 
         // Create a new B+ tree
-        BTree bpt = new BTree();
+        DBBTree bpt = new DBBTree();
 
         // Iterate over all the records in the table
         for (int i = 0; i < table.pagesCount(); i++) {
             Page page = table.getPage(i);
-            Vector<Integer> recordPages;
+            LinkedList<Integer> recordPages;
             for (Hashtable<String, Object> record : page.getRecords()) {
                 // Insert the value of the column and the record's key into the B+ tree
-                Vector<Integer> search = (Vector) bpt.search((Comparable) record.get(strColName));
-                recordPages = search == null ? new Vector<>() : search;
+                LinkedList<Integer> search = bpt.search((Comparable) record.get(strColName));
+                recordPages = search == null ? new LinkedList<>() : search;
                 recordPages.add(i);
                 bpt.insert((Comparable) record.get(strColName), recordPages);
             }
@@ -358,20 +358,18 @@ public class DBApp {
             String indexColumn = column;
             //get the index name
             String indexName = metaData.get(strTableName).get(column)[2];
-            //get the index file
-            String indexFile = (String) getDbConfig().get("DataPath") + "/" + strTableName + "/" + indexName + ".ser";
             //load the index
-            BTree index = Util.loadIndex(indexFile);
+            DBBTree index = DBBTree.loadIndex(strTableName, indexName);
             //get the value of the index column in the condition
             Object value = htblColNameValue.get(indexColumn);
             //get the page number of the record
-            Double pageNumber = (Double) index.search((Integer) value);
+            LinkedList<Integer> pageNumbers = index.search((Integer) value);
 
 //            if (pageNumber == null) {throw new DBAppException("wut da helllllllll");}
 
 
             //get Page
-            p = table.getPage(pageNumber.intValue()); //<--- not sure if this is correct
+            p = table.getPage(pageNumbers.get(0)); //<--- not sure if this is correct
 
             //deleting from BPTree the value and updating BPTree
             index.delete((Integer) value);
@@ -410,7 +408,7 @@ public class DBApp {
 
                     //if the page is empty, remove it
                     if (p.isEmpty()) {
-                        table.getPagesPath().remove(pageNumber.intValue());
+                        table.getPagesPath().remove(pageNumbers.get(0));
 
                     } else {
                         p.updatePage(); //serialize the page
