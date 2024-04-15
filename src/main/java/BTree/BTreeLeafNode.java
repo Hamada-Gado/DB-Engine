@@ -1,11 +1,12 @@
 package BTree;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 
 /**
  * @author mohamed
  */
-class BTreeLeafNode<TKey extends Comparable<TKey>, TValue> extends BTreeNode<TKey> {
+class BTreeLeafNode<TKey extends Comparable<TKey>, TValue> extends BTreeNode<TKey> implements Serializable {
 	protected final static int LEAFORDER = 4;
 	/**
 	 * @uml.property name="values"

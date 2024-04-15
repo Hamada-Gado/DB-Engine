@@ -3,10 +3,7 @@ package BTree;
 import DB.DBApp;
 import DB.DBAppException;
 
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.Serializable;
+import java.io.*;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.LinkedList;
@@ -57,12 +54,13 @@ public class DBBTree<TKey extends Comparable<TKey>> extends BTree<TKey, LinkedLi
         Path file = Paths.get((String) DBApp.getDbConfig().get("DataPath"), tableName, indexName + ".ser");
 
         try (
-                FileInputStream fileIn = new FileInputStream(file.toAbsolutePath().toString());
-                ObjectInputStream in = new ObjectInputStream(fileIn)) {
-            in.readObject();
-        } catch (IOException | ClassNotFoundException e) {
+                FileOutputStream fileOut = new FileOutputStream(file.toAbsolutePath().toString());
+                ObjectOutputStream out = new ObjectOutputStream(fileOut)) {
+            out.writeObject(this);
+        } catch (IOException e) {
             throw new RuntimeException(e);
         }
+
     }
 
     // fetch the bplustree index from the disk

@@ -150,15 +150,7 @@ public class DBApp {
         }
 
         // Save the B+ tree to the disk
-        Path indexPath = Paths.get((String) getDbConfig().get("DataPath"), strTableName, strIndexName + ".ser");
-        try (
-                FileOutputStream fileOut = new FileOutputStream(indexPath.toAbsolutePath().toString());
-                ObjectOutputStream out = new ObjectOutputStream(fileOut)) {
-            out.writeObject(bpt);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-
+        bpt.saveIndex();
 
         // get metadata
         Hashtable<String, Hashtable<String, String[]>> metadata = Util.getMetadata(strTableName);
