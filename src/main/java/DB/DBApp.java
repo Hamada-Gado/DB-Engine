@@ -279,7 +279,6 @@ public class DBApp {
     // htblColNameValue enteries are ANDED together
     public void deleteFromTable(String strTableName,
                                 Hashtable<String, Object> htblColNameValue) throws DBAppException {
-        //TODO: 1- handle index correctly, due to new format of btree
 
         // 1. Validate the delete condition
         if (htblColNameValue.isEmpty()) {
@@ -357,55 +356,57 @@ public class DBApp {
         // Set to store the result
         HashSet<Integer> result = new HashSet<>();
 
-        // 1. Get B+Tree information for the index
         for (String colName : indexColumns) {
             String indexName = metaData.get(strTableName).get(colName)[2];
+
+            // 2. Load the index
             DBBTree BPlusTree = DBBTree.loadIndex(strTableName, indexName);
 
-            // 2. Use B+Tree to get leaf pages containing records to potentially delete
+
             HashSet<Integer> res = new HashSet<>();
 
-            //3. loop over the columns in the condition
-                Object value = htblColNameValue.get(colName);
-                if(value == null) continue;
-                LinkedList<Integer> search = BPlusTree.search((Comparable) value);
-                if (search != null) {
-                    res.addAll(search);
+            // 3. Iterate over the columns in the condition
+            Object value = htblColNameValue.get(colName);
+            if (value == null) continue;
+            LinkedList<Integer> search = BPlusTree.search((Comparable) value);
+            if (search != null) {
+                res.addAll(search);
             }
-                //4. if the result is empty, then there is no record to delete
-                if(result.isEmpty())
-                    result.addAll(res);
-                else
-                    result.retainAll(res);
+            //4. if the result is empty, then there is no record to delete
+            if (result.isEmpty())
+                result.addAll(res);
+            else
+                result.retainAll(res);
         }
 
+        Integer[] pages = result.toArray(new Integer[result.size()]);
         // 5. Iterate over the pages to delete the records
-for (int i = 0; i < table.pagesCount(); i++) {
-            if (result.contains(i)) {
-                Page page = table.getPage(i);
-                for (int j = 0; j < page.getRecords().size(); j++) {
-                    Hashtable<String, Object> record = page.getRecords().get(j);
-                    boolean delete = true;
-                    for (String colName : htblColNameValue.keySet()) {
-                        if (!record.get(colName).equals(htblColNameValue.get(colName))) {
-                            delete = false;
-                            break;
-                        }
+        for (int i = 0; i < pages.length; i++) {
+
+            Page page = table.getPage(pages[i]); // load the page from disk
+
+            for (int j = 0; j < page.getRecords().size(); j++) {
+                Hashtable<String, Object> record = page.getRecords().get(j);
+                boolean delete = true;
+                for (String colName : htblColNameValue.keySet()) {
+                    if (!record.get(colName).equals(htblColNameValue.get(colName))) {
+                        delete = false;
+                        break;
                     }
-                    if (delete) {
-                        page.getRecords().remove(j);
-                        if (page.isEmpty()) {
-                            table.getPagesPath().remove(i);
-                        } else {
-                            page.updatePage();
-                        }
+                }
+                if (delete) {
+                    page.getRecords().remove(j); //remove the record
+                    if (page.isEmpty()) {
+                        table.getPagesPath().remove(pages[i]); //remove the page
+                    } else {
+                        page.updatePage(); //serialize the page
                     }
                 }
             }
-        }
 
+        }
         // 6. Update table metadata (optional)
-        table.updateTable();
+        table.updateTable(); // serialize the table
     }
 
 
