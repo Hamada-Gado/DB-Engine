@@ -186,18 +186,18 @@ public class Util {
 
     }
 
-    public static boolean evaluateSqlTerm(Object value, Object operator, Object objValue) {
+    public static boolean evaluateSqlTerm(Comparable value, String operator, Comparable objValue) {
         if (value == null || objValue == null) {
             return false;
         }
 
-        return switch ((String) operator) {
+        return switch (operator) {
             case "=" -> value.equals(objValue);
             case "!=" -> !value.equals(objValue);
-            case ">" -> ((Comparable) value).compareTo(objValue) > 0;
-            case ">=" -> ((Comparable) value).compareTo(objValue) >= 0;
-            case "<" -> ((Comparable) value).compareTo(objValue) < 0;
-            case "<=" -> ((Comparable) value).compareTo(objValue) <= 0;
+            case ">" -> (value).compareTo(objValue) > 0;
+            case ">=" -> (value).compareTo(objValue) >= 0;
+            case "<" -> (value).compareTo(objValue) < 0;
+            case "<=" -> (value).compareTo(objValue) <= 0;
             default -> throw new RuntimeException("Invalid operator");
         };
     }
@@ -238,7 +238,7 @@ public class Util {
         for (SQLTerm arrSQLTerm : arrSQLTerms) {
             Object value1 = record.get(arrSQLTerm._strColumnName);
             postfix.add(
-                    Util.evaluateSqlTerm(value1, arrSQLTerm._strOperator, arrSQLTerm._objValue));
+                    Util.evaluateSqlTerm((Comparable) value1, arrSQLTerm._strOperator, (Comparable) arrSQLTerm._objValue));
 
             if (j >= strarrOperators.length) {
                 continue;
@@ -279,6 +279,23 @@ public class Util {
             case "XOR" -> value ^ objValue;
             default -> throw new RuntimeException("Invalid operator");
         };
+    }
+
+    public static LinkedList<String> getIndexColumns(Hashtable<String, Hashtable<String, String[]>> metaData, String strTableName) {
+        LinkedList<String> indexColumns = new LinkedList<>();
+        //loop over metaData file and check if the index exists
+        for (String colName : metaData.get(strTableName).keySet()) {
+            // check if index name is not null in meta-data file
+            if (colName.equals("clusteringKey")) {
+                continue;
+            }
+
+            if (!metaData.get(strTableName).get(colName)[2].equals("null")) {
+                indexColumns.add(colName);
+            }
+        }
+
+        return indexColumns;
     }
 
     // fetch the bplustree index from the disk

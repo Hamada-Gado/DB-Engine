@@ -179,7 +179,7 @@ class Test {
         boolean result = Util.evaluatePostfix(postfix);
         assertEquals(true, result);
 
-        postfix = new LinkedList();
+        postfix.clear();
         postfix.add(true);
         postfix.add(true);
         postfix.add(false);
@@ -189,7 +189,7 @@ class Test {
         result = Util.evaluatePostfix(postfix);
         assertEquals(true, result);
 
-        postfix = new LinkedList();
+        postfix.clear();
         postfix.add(true);
         postfix.add(true);
         postfix.add(false);
@@ -349,8 +349,11 @@ class Test {
             ArrayList list = new ArrayList();
             resultSet.forEachRemaining(list::add);
 
-            System.out.println(Table.loadTable(strTableName));
-            System.out.println(list);
+            assertEquals(23498, ((Hashtable) list.get(0)).get("id"));
+            assertEquals(5674567, ((Hashtable) list.get(1)).get("id"));
+
+//            System.out.println(Table.loadTable(strTableName));
+//            System.out.println(list);
         } catch (DBAppException e) {
             e.printStackTrace();
             assertTrue(false);
