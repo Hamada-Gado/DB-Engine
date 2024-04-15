@@ -411,6 +411,64 @@ public class DBApp {
         table.updateTable(); //serialize the table
     }
 
+    // Following method returns a set of the pages of the select query using any index
+    private HashSet<Integer> filterPagesByIndex(
+            SQLTerm[] arrSQLTerms,
+            String[] strarrOperators) throws DBAppException {
+
+        HashSet<Integer> result = new HashSet<>();
+        String tableName = arrSQLTerms[0]._strTableName;
+
+        Hashtable<String, Hashtable<String, String[]>> metaData = Util.getMetadata(tableName);
+        LinkedList<String> indexColumns = Util.getIndexColumns(metaData, tableName);
+
+        for (String col : indexColumns) {
+            String indexName = metaData.get(tableName).get(col)[2];
+            DBBTree index = DBBTree.loadIndex(tableName, indexName);
+            HashSet<Integer> res = new HashSet<>();
+            // only consider filtering using the index if the condition is anded
+            for (int i = 0; i < arrSQLTerms.length; i++) {
+                SQLTerm term = arrSQLTerms[i];
+                String before = i == 0 ? null : strarrOperators[i - 1];
+                String after = i == arrSQLTerms.length - 1 ? null : strarrOperators[i];
+
+                if (term._strColumnName.equals(col)
+                        && ((before != null && before.equals("AND"))
+                        || (after != null && after.equals("AND")))) {
+
+                    Object value = term._objValue;
+                    LinkedList<Integer> search = index.search((Comparable) value);
+                    if (search != null) {
+                        res.addAll(search);
+                    }
+                }
+            }
+
+            result.addAll(res);
+        }
+
+        return result;
+    }
+
+    private void selectFromTableHelper(SQLTerm[] arrSQLTerms, String[] strarrOperators,
+                                       Hashtable<String, Object> record, LinkedList<Hashtable<String, Object>> result) {
+
+        if (arrSQLTerms.length == 1) {
+            SQLTerm term = arrSQLTerms[0];
+            Object value = record.get(term._strColumnName);
+            if (Util.evaluateSqlTerm((Comparable) value, term._strOperator, (Comparable) term._objValue)) {
+                result.add(record);
+            }
+
+            return;
+        }
+
+        LinkedList<Object> postfix = Util.toPostfix(record, arrSQLTerms, strarrOperators);
+        boolean res = Util.evaluatePostfix(postfix);
+        if (res) {
+            result.add(record);
+        }
+    }
 
     // select * from student where name = "John Noor" OR gpa = 1.5 AND id = 2343432;
     public Iterator selectFromTable(@NotNull SQLTerm[] arrSQLTerms,
@@ -424,6 +482,8 @@ public class DBApp {
             throw new DBAppException("Invalid number of operators");
         }
 
+        String tableName = arrSQLTerms[0]._strTableName;
+
         for (SQLTerm term : arrSQLTerms) {
             if (!term._strOperator.equals("=") &&
                     !term._strOperator.equals("!=") &&
@@ -435,29 +495,15 @@ public class DBApp {
                 throw new DBAppException("Invalid operator");
             }
 
-            Util.validateTypes(term._strColumnName, new Hashtable<>(Map.of(term._strColumnName, term._objValue)));
+            Util.validateTypes(tableName, new Hashtable<>(Map.of(term._strColumnName, term._objValue)));
         }
 
-        String tableName = arrSQLTerms[0]._strTableName;
+        HashSet<Integer> filteredPages = filterPagesByIndex(arrSQLTerms, strarrOperators);
         LinkedList<Hashtable<String, Object>> result = new LinkedList<>();
 
         for (Page p : Table.loadTable(tableName)) {
             for (Hashtable<String, Object> record : p.getRecords()) {
-
-                if (arrSQLTerms.length == 1) {
-                    SQLTerm term = arrSQLTerms[0];
-                    Object value = record.get(term._strColumnName);
-                    if (Util.evaluateSqlTerm(value, term._strOperator, term._objValue)) {
-                        result.add(record);
-                    }
-                    continue;
-                }
-
-                LinkedList<Object> postfix = Util.toPostfix(record, arrSQLTerms, strarrOperators);
-                boolean res = Util.evaluatePostfix(postfix);
-                if (res) {
-                    result.add(record);
-                }
+                selectFromTableHelper(arrSQLTerms, strarrOperators, record, result);
             }
         }
 

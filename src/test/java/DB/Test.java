@@ -1,7 +1,6 @@
 package DB;
 
-import java.util.Hashtable;
-import java.util.LinkedList;
+import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -37,11 +36,7 @@ class Test {
                     recordNo = 0;
                 }
             } else {
-<<<<<<< HEAD
-                Page newPage = currentTable.addPage(Integer.parseInt((String) DBApp.getDb_config().get("MaximumRowsCountinPage")));
-=======
-                Page newPage = new Page(strTableName, currentTable.pagesCount(), Integer.parseInt((String) DBApp.getDbConfig().get("MaximumRowsCountinPage")));
->>>>>>> dev
+                Page newPage = currentTable.addPage(Integer.parseInt((String) DBApp.getDbConfig().get("MaximumRowsCountinPage")));
                 currentTable.addRecord(htblColNameValue, pKey, newPage);
                 break;
             }
@@ -184,7 +179,7 @@ class Test {
         boolean result = Util.evaluatePostfix(postfix);
         assertEquals(true, result);
 
-        postfix = new LinkedList();
+        postfix.clear();
         postfix.add(true);
         postfix.add(true);
         postfix.add(false);
@@ -194,7 +189,7 @@ class Test {
         result = Util.evaluatePostfix(postfix);
         assertEquals(true, result);
 
-        postfix = new LinkedList();
+        postfix.clear();
         postfix.add(true);
         postfix.add(true);
         postfix.add(false);
@@ -291,6 +286,81 @@ class Test {
     }
 
     @org.junit.jupiter.api.Test
+    void testSelectMethod() {
+        try {
+            String strTableName = "TestForSelectMethod";
+            DBApp dbApp = new DBApp();
+
+            Hashtable htblColNameType = new Hashtable();
+            htblColNameType.put("id", "java.lang.Integer");
+            htblColNameType.put("name", "java.lang.String");
+            htblColNameType.put("gpa", "java.lang.Double");
+            dbApp.createTable(strTableName, "id", htblColNameType);
+
+            Hashtable htblColNameValue = new Hashtable();
+            htblColNameValue.put("id", Integer.valueOf(2343432));
+            htblColNameValue.put("name", new String("Ahmed Noor"));
+            htblColNameValue.put("gpa", Double.valueOf(0.95));
+            dbApp.insertIntoTable(strTableName, htblColNameValue);
+
+            htblColNameValue.clear();
+            htblColNameValue.put("id", Integer.valueOf(453455));
+            htblColNameValue.put("name", new String("Ahmed Noor"));
+            htblColNameValue.put("gpa", Double.valueOf(0.95));
+            dbApp.insertIntoTable(strTableName, htblColNameValue);
+
+            htblColNameValue.clear();
+            htblColNameValue.put("id", Integer.valueOf(5674567));
+            htblColNameValue.put("name", new String("Dalia Noor"));
+            htblColNameValue.put("gpa", Double.valueOf(1.5));
+            dbApp.insertIntoTable(strTableName, htblColNameValue);
+
+            htblColNameValue.clear();
+            htblColNameValue.put("id", Integer.valueOf(23498));
+            htblColNameValue.put("name", new String("John Noor"));
+            htblColNameValue.put("gpa", Double.valueOf(1.5));
+            dbApp.insertIntoTable(strTableName, htblColNameValue);
+
+            htblColNameValue.clear();
+            htblColNameValue.put("id", Integer.valueOf(78452));
+            htblColNameValue.put("name", new String("Zaky Noor"));
+            htblColNameValue.put("gpa", Double.valueOf(0.88));
+            dbApp.insertIntoTable(strTableName, htblColNameValue);
+
+            // name = "John Noor" OR gpa = 1.5
+            SQLTerm[] arrSQLTerms;
+            arrSQLTerms = new SQLTerm[2];
+            arrSQLTerms[0] = new SQLTerm();
+            arrSQLTerms[0]._strTableName = strTableName;
+            arrSQLTerms[0]._strColumnName = "name";
+            arrSQLTerms[0]._strOperator = "=";
+            arrSQLTerms[0]._objValue = "John Noor";
+
+            arrSQLTerms[1] = new SQLTerm();
+            arrSQLTerms[1]._strTableName = strTableName;
+            arrSQLTerms[1]._strColumnName = "gpa";
+            arrSQLTerms[1]._strOperator = "=";
+            arrSQLTerms[1]._objValue = Double.valueOf(1.5);
+
+            String[] strarrOperators = new String[1];
+            strarrOperators[0] = "OR";
+            Iterator resultSet = dbApp.selectFromTable(arrSQLTerms, strarrOperators);
+
+            ArrayList list = new ArrayList();
+            resultSet.forEachRemaining(list::add);
+
+            assertEquals(23498, ((Hashtable) list.get(0)).get("id"));
+            assertEquals(5674567, ((Hashtable) list.get(1)).get("id"));
+
+//            System.out.println(Table.loadTable(strTableName));
+//            System.out.println(list);
+        } catch (DBAppException e) {
+            e.printStackTrace();
+            assertTrue(false);
+        }
+    }
+
+    @org.junit.jupiter.api.Test
     void test500Inserts() {
         long time = System.nanoTime();
 
@@ -323,6 +393,10 @@ class Test {
 
         time = (System.nanoTime() - time) / 1000000000;
         System.out.println("Time taken: " + time + " secs");
-        System.out.println(Table.loadTable(strTableName));
+        try {
+            System.out.println(Table.loadTable(strTableName));
+        } catch (DBAppException e) {
+            e.printStackTrace();
+        }
     }
 }
