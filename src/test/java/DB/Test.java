@@ -37,11 +37,9 @@ class Test {
                     recordNo = 0;
                 }
             } else {
-<<<<<<< HEAD
-                Page newPage = currentTable.addPage(Integer.parseInt((String) DBApp.getDb_config().get("MaximumRowsCountinPage")));
-=======
-                Page newPage = new Page(strTableName, currentTable.pagesCount(), Integer.parseInt((String) DBApp.getDbConfig().get("MaximumRowsCountinPage")));
->>>>>>> dev
+
+                Page newPage = currentTable.addPage(Integer.parseInt((String) DBApp.getDbConfig().get("MaximumRowsCountinPage")));
+
                 currentTable.addRecord(htblColNameValue, pKey, newPage);
                 break;
             }
@@ -323,6 +321,10 @@ class Test {
 
         time = (System.nanoTime() - time) / 1000000000;
         System.out.println("Time taken: " + time + " secs");
-        System.out.println(Table.loadTable(strTableName));
+        try {
+            System.out.println(Table.loadTable(strTableName));
+        } catch (DBAppException e) {
+            e.printStackTrace();
+        }
     }
 }

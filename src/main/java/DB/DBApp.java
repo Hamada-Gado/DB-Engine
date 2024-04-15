@@ -269,6 +269,55 @@ public class DBApp {
             records.set(info[1], record);
             page.updatePage();
         }
+        // Iterate over each column in the metadata
+        for (String colName : metaData.keySet()) {
+            // Check if the column has an index
+            String indexName = metaData.get(strTableName).get(colName)[2];
+            if (!indexName.equals("null")) {
+                // Load the index
+                DBBTree index = DBBTree.loadIndex(strTableName, indexName);
+
+                // Update the index
+                int[] info = Util.getRecordPos(strTableName, strClusteringKeyValue, colName);
+                if (info[2] == 0) {
+                    throw new DBAppException("Key Not found");
+                }
+
+                Page page = table.getPage(info[0]);
+                Vector<Hashtable<String, Object>> records = page.getRecords();
+                Hashtable<String, Object> record = records.get(info[1]);
+
+                Object oldValue = record.get(colName);
+                Object newValue = htblColNameValue.get(colName);
+                LinkedList<Integer> pages = (LinkedList<Integer>) index.search((Comparable) oldValue);
+                if (pages != null) {
+                    pages.remove((Integer) info[0]);
+                    if (pages.isEmpty()) {
+                        index.delete((Comparable) oldValue);
+                    } else {
+                        index.insert((Comparable) oldValue, pages);
+                    }
+                }
+                pages = index.search((Comparable) newValue);
+                if (pages == null) {
+                    pages = new LinkedList<>();
+                }
+                pages.add(info[0]);
+                index.insert((Comparable) newValue, pages);
+
+                // Save the index back to the disk
+                Path indexPath = Paths.get((String) db_config.get("DataPath"), strTableName, indexName + ".ser");
+                try {
+                    FileOutputStream fileOut = new FileOutputStream(indexPath.toAbsolutePath().toString());
+                    ObjectOutputStream out = new ObjectOutputStream(fileOut);
+                    out.writeObject(index);
+                    out.close();
+                    fileOut.close();
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        }
     }
 
 
