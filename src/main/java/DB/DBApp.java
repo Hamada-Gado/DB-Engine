@@ -422,7 +422,7 @@ public class DBApp {
     // Following method returns a set of the pages of the select query using any index
     private HashSet<Integer> filterPagesByIndex(
             SQLTerm[] arrSQLTerms,
-            String[] strarrOperators) {
+            String[] strarrOperators) throws DBAppException {
 
         HashSet<Integer> result = new HashSet<>();
         String tableName = arrSQLTerms[0]._strTableName;
@@ -432,8 +432,7 @@ public class DBApp {
 
         for (String col : indexColumns) {
             String indexName = metaData.get(tableName).get(col)[2];
-            String indexFile = getDbConfig().get("DataPath") + "/" + tableName + "/" + indexName + ".ser";
-            BTree index = Util.loadIndex(indexFile);
+            DBBTree index = DBBTree.loadIndex(tableName, indexName);
             HashSet<Integer> res = new HashSet<>();
             // only consider filtering using the index if the condition is anded
             for (int i = 0; i < arrSQLTerms.length; i++) {
@@ -446,7 +445,7 @@ public class DBApp {
                         || (after != null && after.equals("AND")))) {
 
                     Object value = term._objValue;
-                    Vector<Integer> search = (Vector) index.search((Comparable) value);
+                    LinkedList<Integer> search = index.search((Comparable) value);
                     if (search != null) {
                         res.addAll(search);
                     }
