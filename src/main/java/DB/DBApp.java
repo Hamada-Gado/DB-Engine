@@ -140,13 +140,9 @@ public class DBApp {
         // Iterate over all the records in the table
         for (int i = 0; i < table.pagesCount(); i++) {
             Page page = table.getPage(i);
-            LinkedList<Integer> recordPages;
             for (Hashtable<String, Object> record : page.getRecords()) {
                 // Insert the value of the column and the record's key into the B+ tree
-                LinkedList<Integer> search = bpt.search((Comparable) record.get(strColName));
-                recordPages = search == null ? new LinkedList<>() : search;
-                recordPages.add(i);
-                bpt.insert((Comparable) record.get(strColName), recordPages);
+                bpt.insert((Comparable) record.get(strColName), i);
             }
         }
 
@@ -160,7 +156,7 @@ public class DBApp {
 
         String metadataPath = getDbConfig().getProperty("MetadataPath");
         try (FileWriter writer = new FileWriter(metadataPath, true)) {
-            writer.write(strTableName + "," + strColName + "," + columnDataArray[0] + "," + columnDataArray[1] + "," + strIndexName + ",B+Tree\n");
+            writer.write(strTableName + "," + strColName + "," + columnDataArray[0] + "," + columnDataArray[1] + "," + strIndexName + ",B+tree\n");
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -174,7 +170,7 @@ public class DBApp {
         //ToDo: validation
 
         Hashtable<String, Hashtable<String, String[]>> metaData = Util.getMetadata(strTableName);
-        if (metaData == null) {
+        if (metaData.get(strTableName) == null) {
             throw new DBAppException("Table not found");
         }
 
@@ -192,20 +188,24 @@ public class DBApp {
         int pageNo = recordPos[0];
         int recordNo = recordPos[1];
 
-        for (int i = pageNo; i <= currentTable.pagesCount(); i++) {
-            if (i < currentTable.pagesCount()) {
-                Page page = currentTable.getPage(i);
-                if (!currentTable.getPage(i).isFull()) {
+        for (int currentPageNo = pageNo; currentPageNo <= currentTable.pagesCount(); currentPageNo++) {
+            if (currentPageNo < currentTable.pagesCount()) {
+                Page page = currentTable.getPage(currentPageNo);
+                if (!page.isFull()) {
                     currentTable.addRecord(recordNo + 1, htblColNameValue, pKey, page);
+                    Util.updateIndexes(strTableName, currentPageNo, recordNo + 1, metaData);
                     break;
                 } else {
                     currentTable.addRecord(recordNo, htblColNameValue, pKey, page);
-                    htblColNameValue = currentTable.removeRecord(currentTable.getPage(i).getMax() - 1, pKey, page);
+                    Util.updateIndexes(strTableName, currentPageNo, recordNo, metaData);
+                    htblColNameValue = currentTable.removeRecord(currentTable.getPage(currentPageNo).getMax() - 1, pKey, page);
+                    Util.deleteIndexes(strTableName, currentPageNo, currentTable.getPage(currentPageNo).getMax() - 1, metaData);
                     recordNo = 0;
                 }
             } else {
                 Page newPage = currentTable.addPage(Integer.parseInt((String) DBApp.getDbConfig().get("MaximumRowsCountinPage")));
                 currentTable.addRecord(htblColNameValue, pKey, newPage);
+                Util.updateIndexes(strTableName, pageNo, recordNo, metaData);
                 break;
             }
         }
@@ -343,6 +343,7 @@ public class DBApp {
         table.updateTable(); //serialize the table
     }
 
+
     private void deleteFromTableHelper(String strTableName,
                                        Hashtable<String, Object> htblColNameValue,
                                        ArrayList<String> indexColumns,
@@ -366,15 +367,16 @@ public class DBApp {
             // 3. Iterate over the columns in the condition
             Object value = htblColNameValue.get(colName);
             if (value == null) continue;
-            LinkedList<Integer> search = BPlusTree.search((Comparable) value);
+            HashMap search = BPlusTree.search((Comparable) value);
             if (search != null) {
-                res.addAll(search);
+                res.addAll(search.keySet());
             }
-            //4. if the result is empty, then there is no record to delete
-            if (result.isEmpty())
+
+            if (result.isEmpty()) {
                 result.addAll(res);
-            else
+            } else {
                 result.retainAll(res);
+            }
         }
 
         Integer[] pages = result.toArray(new Integer[result.size()]);
@@ -386,16 +388,18 @@ public class DBApp {
             for (int j = 0; j < page.getRecords().size(); j++) {
                 Hashtable<String, Object> record = page.getRecords().get(j);
                 boolean delete = true;
-                for (String colName : htblColNameValue.keySet()) {
-                    if (!record.get(colName).equals(htblColNameValue.get(colName))) {
+                for (String col : htblColNameValue.keySet()) {
+                    if (!record.get(col).equals(htblColNameValue.get(col))) {
                         delete = false;
                         break;
                     }
                 }
                 if (delete) {
-                    table.removeRecord(j, pKey, page);; //remove the record
+                    table.removeRecord(j, pKey, page);
+                    ; //remove the record
                     if (page.isEmpty()) {
                         table.getPagesPath().remove(pages[i]); //remove the page
+
                     } else {
                         page.updatePage(); //serialize the page
                     }
@@ -407,256 +411,184 @@ public class DBApp {
         table.updateTable(); // serialize the table
     }
 
-    // Following method returns a set of the pages of the select query using any index
-    private HashSet<Integer> filterPagesByIndex(
-            SQLTerm[] arrSQLTerms,
-            String[] strarrOperators) throws DBAppException {
 
-        HashSet<Integer> result = new HashSet<>();
-        String tableName = arrSQLTerms[0]._strTableName;
 
-        Hashtable<String, Hashtable<String, String[]>> metaData = Util.getMetadata(tableName);
-        LinkedList<String> indexColumns = Util.getIndexColumns(metaData, tableName);
+// Following method returns a set of the pages of the select query using any index
+private HashSet<Integer> filterPagesByIndex(
+        SQLTerm[] arrSQLTerms,
+        String[] strarrOperators) throws DBAppException {
 
-        for (String col : indexColumns) {
-            String indexName = metaData.get(tableName).get(col)[2];
-            DBBTree index = DBBTree.loadIndex(tableName, indexName);
-            HashSet<Integer> res = new HashSet<>();
-            // only consider filtering using the index if the condition is anded
-            for (int i = 0; i < arrSQLTerms.length; i++) {
-                SQLTerm term = arrSQLTerms[i];
-                String before = i == 0 ? null : strarrOperators[i - 1];
-                String after = i == arrSQLTerms.length - 1 ? null : strarrOperators[i];
+    HashSet<Integer> result = new HashSet<>();
+    String tableName = arrSQLTerms[0]._strTableName;
 
-                if (term._strColumnName.equals(col)
-                        && ((before != null && before.equals("AND"))
-                        || (after != null && after.equals("AND")))) {
+    Hashtable<String, Hashtable<String, String[]>> metaData = Util.getMetadata(tableName);
+    LinkedList<String> indexColumns = Util.getIndexColumns(metaData, tableName);
 
-                    Object value = term._objValue;
-                    LinkedList<Integer> search = index.search((Comparable) value);
-                    if (search != null) {
-                        res.addAll(search);
-                    }
+    for (String col : indexColumns) {
+        String indexName = metaData.get(tableName).get(col)[2];
+        DBBTree index = DBBTree.loadIndex(tableName, indexName);
+        HashSet<Integer> res = new HashSet<>();
+        // only consider filtering using the index if the condition is anded
+        for (int i = 0; i < arrSQLTerms.length; i++) {
+            SQLTerm term = arrSQLTerms[i];
+            String before = i == 0 ? null : strarrOperators[i - 1];
+            String after = i == arrSQLTerms.length - 1 ? null : strarrOperators[i];
+
+            if (term._strColumnName.equals(col)
+                    && ((before != null && before.equals("AND"))
+                    || (after != null && after.equals("AND")))) {
+
+                Object value = term._objValue;
+                HashMap<Integer, Integer> search = index.search((Comparable) value);
+                if (search != null) {
+                    res.addAll(search.keySet());
                 }
             }
-
-            result.addAll(res);
         }
 
-        return result;
+        result.addAll(res);
     }
 
-    private void selectFromTableHelper(SQLTerm[] arrSQLTerms, String[] strarrOperators,
-                                       Hashtable<String, Object> record, LinkedList<Hashtable<String, Object>> result) {
+    return result;
+}
 
-        if (arrSQLTerms.length == 1) {
-            SQLTerm term = arrSQLTerms[0];
-            Object value = record.get(term._strColumnName);
-            if (Util.evaluateSqlTerm((Comparable) value, term._strOperator, (Comparable) term._objValue)) {
-                result.add(record);
-            }
+private void selectFromTableHelper(SQLTerm[] arrSQLTerms, String[] strarrOperators,
+                                   Hashtable<String, Object> record, LinkedList<Hashtable<String, Object>> result) {
 
-            return;
-        }
-
-        LinkedList<Object> postfix = Util.toPostfix(record, arrSQLTerms, strarrOperators);
-        boolean res = Util.evaluatePostfix(postfix);
-        if (res) {
+    if (arrSQLTerms.length == 1) {
+        SQLTerm term = arrSQLTerms[0];
+        Object value = record.get(term._strColumnName);
+        if (Util.evaluateSqlTerm((Comparable) value, term._strOperator, (Comparable) term._objValue)) {
             result.add(record);
         }
+
+        return;
     }
 
-//    public void deleteFromTableHelper(String strTableName,
-//                                      Hashtable<String, Object> htblColNameValue,
-//                                      ArrayList<String> indexColumns, Table table, Hashtable<String, Hashtable<String, String[]>> metaData) throws DBAppException {
-//        Page p = null;
-//        //loop over the index columns
-//        for (String column : indexColumns) {
-//            //get the index column
-//            String indexColumn = column;
-//            //get the index name
-//            String indexName = metaData.get(strTableName).get(column)[2];
-//            //load the index
-//            DBBTree index = DBBTree.loadIndex(strTableName, indexName);
-//            //get the value of the index column in the condition
-//            Object value = htblColNameValue.get(indexColumn);
-//            //get the page number of the record
-//            LinkedList<Integer> pageNumbers = index.search((Integer) value);
-//
-//
-//
-//
-////            if (pageNumber == null) {throw new DBAppException("wut da helllllllll");}
-//
-//
-//            //get Page
-//            p = table.getPage(pageNumbers.get(0)); //<--- not sure if this is correct
-//
-//            //deleting from BPTree the value and updating BPTree
-//            index.delete((Integer) value);
-//
-//            //save the index on disk
-//            Path indexPath = Paths.get((String) db_config.get("DataPath"), strTableName, indexName + ".ser");
-//            try {
-//                FileOutputStream fileOut = new FileOutputStream(indexPath.toAbsolutePath().toString());
-//                ObjectOutputStream out = new ObjectOutputStream(fileOut);
-//                out.writeObject(index);
-//                out.close();
-//                fileOut.close();
-//            } catch (IOException e) {
-//                throw new RuntimeException(e);
-//            }
-//
-//
-//            //iterate over the records in the page
-//            for (int j = 0; j < p.getRecords().size(); j++) {
-//                // get the record
-//                Hashtable<String, Object> record = p.getRecords().get(j);
-//                boolean delete = true;
-//                //key-set is the columns in the record
-//                //loop over the columns in the record
-//                for (String colName : htblColNameValue.keySet()) {
-//                    //if the record does not have the column or the value is not equal to the value in the condition
-//                    //get() gets the value of the column
-//                    if (!record.get(colName).equals(htblColNameValue.get(colName))) {
-//                        delete = false;
-//                        break;
-//                    }
-//                }
-//                if (delete) {
-//                    //remove the record
-//                    p.getRecords().remove(j);
-//
-//                    //if the page is empty, remove it
-//                    if (p.isEmpty()) {
-//                        table.getPagesPath().remove(pageNumbers.get(0));
-//
-//                    } else {
-//                        p.updatePage(); //serialize the page
-//                    }
-//                }
-//            }
-//        }
-//        table.updateTable(); //serialize the table
-//    }
-
-
-    // select * from student where name = "John Noor" OR gpa = 1.5 AND id = 2343432;
-    public Iterator selectFromTable(@NotNull SQLTerm[] arrSQLTerms,
-                                    @NotNull String[] strarrOperators) throws DBAppException {
-
-        if (arrSQLTerms.length == 0) {
-            throw new DBAppException("No SQL terms provided");
-        }
-
-        if (arrSQLTerms.length != strarrOperators.length + 1) {
-            throw new DBAppException("Invalid number of operators");
-        }
-
-        String tableName = arrSQLTerms[0]._strTableName;
-
-        for (SQLTerm term : arrSQLTerms) {
-            if (!term._strOperator.equals("=") &&
-                    !term._strOperator.equals("!=") &&
-                    !term._strOperator.equals(">") &&
-                    !term._strOperator.equals(">=") &&
-                    !term._strOperator.equals("<") &&
-                    !term._strOperator.equals("<=")
-            ) {
-                throw new DBAppException("Invalid operator");
-            }
-
-            Util.validateTypes(tableName, new Hashtable<>(Map.of(term._strColumnName, term._objValue)));
-        }
-
-        HashSet<Integer> filteredPages = filterPagesByIndex(arrSQLTerms, strarrOperators);
-        LinkedList<Hashtable<String, Object>> result = new LinkedList<>();
-
-        for (Page p : Table.loadTable(tableName)) {
-            for (Hashtable<String, Object> record : p.getRecords()) {
-                selectFromTableHelper(arrSQLTerms, strarrOperators, record, result);
-            }
-        }
-
-
-        return result.iterator();
+    LinkedList<Object> postfix = Util.toPostfix(record, arrSQLTerms, strarrOperators);
+    boolean res = Util.evaluatePostfix(postfix);
+    if (res) {
+        result.add(record);
     }
-
-    public static Properties getDbConfig() {
-        if (db_config == null) {
-            throw new RuntimeException("DBApp not initialized");
-        }
-
-        return db_config;
-    }
-
-    public static void test() {
-
-        try {
-            String strTableName = "Student";
-            DBApp dbApp = new DBApp();
-
-            Hashtable htblColNameType = new Hashtable();
-            htblColNameType.put("id", "java.lang.Integer");
-            htblColNameType.put("name", "java.lang.String");
-            htblColNameType.put("gpa", "java.lang.Double");
-            dbApp.createTable(strTableName, "id", htblColNameType);
-            dbApp.createIndex(strTableName, "gpa", "gpaIndex");
-
-            Hashtable htblColNameValue = new Hashtable();
-            htblColNameValue.put("id", Integer.valueOf(2343432));
-            htblColNameValue.put("name", new String("Ahmed Noor"));
-            htblColNameValue.put("gpa", Double.valueOf(0.95));
-            dbApp.insertIntoTable(strTableName, htblColNameValue);
-
-            htblColNameValue.clear();
-            htblColNameValue.put("id", Integer.valueOf(453455));
-            htblColNameValue.put("name", new String("Ahmed Noor"));
-            htblColNameValue.put("gpa", Double.valueOf(0.95));
-            dbApp.insertIntoTable(strTableName, htblColNameValue);
-
-            htblColNameValue.clear();
-            htblColNameValue.put("id", Integer.valueOf(5674567));
-            htblColNameValue.put("name", new String("Dalia Noor"));
-            htblColNameValue.put("gpa", Double.valueOf(1.25));
-            dbApp.insertIntoTable(strTableName, htblColNameValue);
-
-            htblColNameValue.clear();
-            htblColNameValue.put("id", Integer.valueOf(23498));
-            htblColNameValue.put("name", new String("John Noor"));
-            htblColNameValue.put("gpa", Double.valueOf(1.5));
-            dbApp.insertIntoTable(strTableName, htblColNameValue);
-
-            htblColNameValue.clear();
-            htblColNameValue.put("id", Integer.valueOf(78452));
-            htblColNameValue.put("name", new String("Zaky Noor"));
-            htblColNameValue.put("gpa", Double.valueOf(0.88));
-            dbApp.insertIntoTable(strTableName, htblColNameValue);
-
-
-            SQLTerm[] arrSQLTerms;
-            arrSQLTerms = new SQLTerm[2];
-            arrSQLTerms[0]._strTableName = "Student";
-            arrSQLTerms[0]._strColumnName = "name";
-            arrSQLTerms[0]._strOperator = "=";
-            arrSQLTerms[0]._objValue = "John Noor";
-
-            arrSQLTerms[1]._strTableName = "Student";
-            arrSQLTerms[1]._strColumnName = "gpa";
-            arrSQLTerms[1]._strOperator = "=";
-            arrSQLTerms[1]._objValue = Double.valueOf(1.5);
-
-            String[] strarrOperators = new String[1];
-            strarrOperators[0] = "OR";
-            // select * from Student where name = "John Noor" or gpa = 1.5;
-            Iterator resultSet = dbApp.selectFromTable(arrSQLTerms, strarrOperators);
-        } catch (Exception exp) {
-            exp.printStackTrace();
-        }
-    }
-
-    public static void main(String[] args) {
-        DBApp.test();
-    }
-
 }
+
+
+// select * from student where name = "John Noor" OR gpa = 1.5 AND id = 2343432;
+public Iterator selectFromTable(@NotNull SQLTerm[] arrSQLTerms,
+                                @NotNull String[] strarrOperators) throws DBAppException {
+
+    if (arrSQLTerms.length == 0) {
+        throw new DBAppException("No SQL terms provided");
+    }
+
+    if (arrSQLTerms.length != strarrOperators.length + 1) {
+        throw new DBAppException("Invalid number of operators");
+    }
+
+    String tableName = arrSQLTerms[0]._strTableName;
+
+    for (SQLTerm term : arrSQLTerms) {
+        if (!term._strOperator.equals("=") &&
+                !term._strOperator.equals("!=") &&
+                !term._strOperator.equals(">") &&
+                !term._strOperator.equals(">=") &&
+                !term._strOperator.equals("<") &&
+                !term._strOperator.equals("<=")
+        ) {
+            throw new DBAppException("Invalid operator");
+        }
+
+        Util.validateTypes(tableName, new Hashtable<>(Map.of(term._strColumnName, term._objValue)));
+    }
+
+    HashSet<Integer> filteredPages = filterPagesByIndex(arrSQLTerms, strarrOperators);
+    LinkedList<Hashtable<String, Object>> result = new LinkedList<>();
+
+    for (Page p : Table.loadTable(tableName)) {
+        for (Hashtable<String, Object> record : p.getRecords()) {
+            selectFromTableHelper(arrSQLTerms, strarrOperators, record, result);
+        }
+    }
+
+
+    return result.iterator();
+}
+
+public static Properties getDbConfig() {
+    if (db_config == null) {
+        throw new RuntimeException("DBApp not initialized");
+    }
+
+    return db_config;
+}
+
+public static void test() {
+
+    try {
+        String strTableName = "Student";
+        DBApp dbApp = new DBApp();
+
+        Hashtable htblColNameType = new Hashtable();
+        htblColNameType.put("id", "java.lang.Integer");
+        htblColNameType.put("name", "java.lang.String");
+        htblColNameType.put("gpa", "java.lang.Double");
+        dbApp.createTable(strTableName, "id", htblColNameType);
+        dbApp.createIndex(strTableName, "gpa", "gpaIndex");
+
+        Hashtable htblColNameValue = new Hashtable();
+        htblColNameValue.put("id", Integer.valueOf(2343432));
+        htblColNameValue.put("name", new String("Ahmed Noor"));
+        htblColNameValue.put("gpa", Double.valueOf(0.95));
+        dbApp.insertIntoTable(strTableName, htblColNameValue);
+
+        htblColNameValue.clear();
+        htblColNameValue.put("id", Integer.valueOf(453455));
+        htblColNameValue.put("name", new String("Ahmed Noor"));
+        htblColNameValue.put("gpa", Double.valueOf(0.95));
+        dbApp.insertIntoTable(strTableName, htblColNameValue);
+
+        htblColNameValue.clear();
+        htblColNameValue.put("id", Integer.valueOf(5674567));
+        htblColNameValue.put("name", new String("Dalia Noor"));
+        htblColNameValue.put("gpa", Double.valueOf(1.25));
+        dbApp.insertIntoTable(strTableName, htblColNameValue);
+
+        htblColNameValue.clear();
+        htblColNameValue.put("id", Integer.valueOf(23498));
+        htblColNameValue.put("name", new String("John Noor"));
+        htblColNameValue.put("gpa", Double.valueOf(1.5));
+        dbApp.insertIntoTable(strTableName, htblColNameValue);
+
+        htblColNameValue.clear();
+        htblColNameValue.put("id", Integer.valueOf(78452));
+        htblColNameValue.put("name", new String("Zaky Noor"));
+        htblColNameValue.put("gpa", Double.valueOf(0.88));
+        dbApp.insertIntoTable(strTableName, htblColNameValue);
+
+
+        SQLTerm[] arrSQLTerms;
+        arrSQLTerms = new SQLTerm[2];
+        arrSQLTerms[0]._strTableName = "Student";
+        arrSQLTerms[0]._strColumnName = "name";
+        arrSQLTerms[0]._strOperator = "=";
+        arrSQLTerms[0]._objValue = "John Noor";
+
+        arrSQLTerms[1]._strTableName = "Student";
+        arrSQLTerms[1]._strColumnName = "gpa";
+        arrSQLTerms[1]._strOperator = "=";
+        arrSQLTerms[1]._objValue = Double.valueOf(1.5);
+
+        String[] strarrOperators = new String[1];
+        strarrOperators[0] = "OR";
+        // select * from Student where name = "John Noor" or gpa = 1.5;
+        Iterator resultSet = dbApp.selectFromTable(arrSQLTerms, strarrOperators);
+    } catch (Exception exp) {
+        exp.printStackTrace();
+    }
+}
+
+public static void main(String[] args) {
+    DBApp.test();
+}
+
+        }

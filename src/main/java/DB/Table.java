@@ -133,8 +133,11 @@ public class Table implements Iterable<Page>, Serializable {
     public String toString() {
         StringBuilder res = new StringBuilder();
 
-        for (Page page : this) {
-            res.append("Page:\n")
+        for (int i = 0; i < pagesCount(); i++) {
+            Page page = getPage(i);
+            res.append("Page ")
+                    .append(i)
+                    .append(":\n")
                     .append(page)
                     .append("\n");
         }

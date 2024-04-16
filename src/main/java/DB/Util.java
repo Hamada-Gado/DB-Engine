@@ -1,6 +1,6 @@
 package DB;
 
-import BTree.BTree;
+import BTree.DBBTree;
 
 import java.io.*;
 import java.util.*;
@@ -298,20 +298,37 @@ public class Util {
         return indexColumns;
     }
 
-    // fetch the bplustree index from the disk
-    public static BTree loadIndex(String file) {
-        BTree tree = null;
-        try {
-            FileInputStream fileIn = new FileInputStream(file);
-            ObjectInputStream in = new ObjectInputStream(fileIn);
-            tree = (BTree) in.readObject();
-            in.close();
-            fileIn.close();
-        } catch (IOException | ClassNotFoundException e) {
-            throw new RuntimeException(e);
+    public static void updateIndexes(String tableName, int pageNo, int recordNo,
+                                     Hashtable<String, Hashtable<String, String[]>> metadata) throws DBAppException {
+        LinkedList<String> indexColumns = Util.getIndexColumns(metadata, tableName);
+        Table table = Table.loadTable(tableName);
+        Hashtable record = table.getPage(pageNo).getRecords().get(recordNo);
+
+        for (String colName : indexColumns) {
+            String indexName = metadata.get(tableName).get(colName)[2];
+            String indexType = metadata.get(tableName).get(colName)[3];
+            if (indexType.equals("B+tree")) {
+                if (record.get(colName) == null) continue;
+                DBBTree tree = DBBTree.loadIndex(tableName, indexName);
+                tree.insert((Comparable) record.get(colName), pageNo);
+            }
         }
-        return tree;
     }
 
-    ;
+    public static void deleteIndexes(String tableName, int pageNo, int recordNo,
+                                     Hashtable<String, Hashtable<String, String[]>> metadata) throws DBAppException {
+        LinkedList<String> indexColumns = Util.getIndexColumns(metadata, tableName);
+        Table table = Table.loadTable(tableName);
+        Hashtable record = table.getPage(pageNo).getRecords().get(recordNo);
+
+        for (String colName : indexColumns) {
+            String indexName = metadata.get(tableName).get(colName)[2];
+            String indexType = metadata.get(tableName).get(colName)[3];
+            if (indexType.equals("B+tree")) {
+                if (record.get(colName) == null) continue;
+                DBBTree tree = DBBTree.loadIndex(tableName, indexName);
+                tree.delete((Comparable) record.get(colName), pageNo);
+            }
+        }
+    }
 }
