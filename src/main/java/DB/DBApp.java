@@ -277,6 +277,8 @@ public class DBApp {
     // htblColNameValue holds the key and value. This will be used in search
     // to identify which rows/tuples to delete.
     // htblColNameValue enteries are ANDED together
+
+
     public void deleteFromTable(String strTableName,
                                 Hashtable<String, Object> htblColNameValue) throws DBAppException {
 
@@ -288,6 +290,7 @@ public class DBApp {
         // 2. Load the table & check if it exists
         Table table = Table.loadTable(strTableName);
 
+
         // 3. check if there is an index on the table
         Hashtable<String, Hashtable<String, String[]>> metaData = Util.getMetadata(strTableName);
         if (metaData == null) {
@@ -296,16 +299,17 @@ public class DBApp {
 
         String pKey = metaData.get(strTableName).get("clusteringKey")[0];
 
+
         ArrayList<String> indexColumns = new ArrayList<>();
         //loop over metaData file and check if the index exists
         for (String colName : metaData.keySet()) {
             // check if index name is not null in meta-data file
-            if (!metaData.get(strTableName).get(colName)[2].equals("null")) {
+            if (!metaData.get(strTableName).get("indexName")[0].equals("null")) {
                 indexColumns.add(colName);
             }
         }
 
-        //4. Iterate through each page in the table to find the record to delete if no index
+
         if (!indexColumns.isEmpty()) {
             //if there is an index
             deleteFromTableHelper(strTableName, htblColNameValue, indexColumns, table, metaData);
@@ -356,6 +360,9 @@ public class DBApp {
         // Set to store the result
         HashSet<Integer> result = new HashSet<>();
 
+        // Get the clustering key
+        String pKey = metaData.get(strTableName).get("clusteringKey")[0];
+
         for (String colName : indexColumns) {
             String indexName = metaData.get(strTableName).get(colName)[2];
 
@@ -395,7 +402,7 @@ public class DBApp {
                     }
                 }
                 if (delete) {
-                    page.getRecords().remove(j); //remove the record
+                    table.removeRecord(j, pKey, page);; //remove the record
                     if (page.isEmpty()) {
                         table.getPagesPath().remove(pages[i]); //remove the page
                     } else {
