@@ -101,9 +101,9 @@ public class DBBTree<TKey extends Comparable<TKey>> extends BTree<TKey, HashMap<
     }
 
     // fetch the bplustree index from the disk
-    public static DBBTree loadIndex(String TableName, String IndexName) throws DBAppException {
+    public static DBBTree loadIndex(String tableName, String indexName) throws DBAppException {
         DBBTree tree;
-        Path file = Paths.get((String) DBApp.getDbConfig().get("DataPath"), TableName, IndexName + ".ser");
+        Path file = Paths.get((String) DBApp.getDbConfig().get("DataPath"), tableName, indexName + ".ser");
 
         if (!file.toFile().exists()) {
             throw new DBAppException("Index file does not exist");

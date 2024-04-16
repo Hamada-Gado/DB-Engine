@@ -190,21 +190,19 @@ public class DBApp {
         for (int currentPageNo = pageNo; currentPageNo <= currentTable.pagesCount(); currentPageNo++) {
             if (currentPageNo < currentTable.pagesCount()) {
                 Page page = currentTable.getPage(currentPageNo);
-                if (!page.isFull()) {
-                    currentTable.addRecord(recordNo + 1, htblColNameValue, pKey, page);
-                    Util.updateIndexes(strTableName, currentPageNo, recordNo + 1, metaData);
-                    break;
-                } else {
-                    currentTable.addRecord(recordNo, htblColNameValue, pKey, page);
-                    Util.updateIndexes(strTableName, currentPageNo, recordNo, metaData);
-                    htblColNameValue = currentTable.removeRecord(currentTable.getPage(currentPageNo).getMax() - 1, pKey, page);
-                    Util.deleteIndexes(strTableName, currentPageNo, currentTable.getPage(currentPageNo).getMax() - 1, metaData);
+                currentTable.addRecord(recordNo + 1, htblColNameValue, pKey, page);
+                Util.updateIndexes(strTableName, currentPageNo, recordNo + 1, metaData);
+                if (page.size() == page.getMax() + 1 ) {
+                    Util.deleteIndexes(strTableName, currentPageNo, page.getMax(), metaData);
+                    htblColNameValue = currentTable.removeRecord(page.getMax(), pKey, page);
                     recordNo = 0;
+                } else {
+                    break;
                 }
             } else {
                 Page newPage = currentTable.addPage(Integer.parseInt((String) DBApp.getDbConfig().get("MaximumRowsCountinPage")));
                 currentTable.addRecord(htblColNameValue, pKey, newPage);
-                Util.updateIndexes(strTableName, pageNo, recordNo, metaData);
+                Util.updateIndexes(strTableName, currentPageNo, recordNo, metaData);
                 break;
             }
         }

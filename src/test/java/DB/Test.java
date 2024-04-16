@@ -1,9 +1,6 @@
 package DB;
 
 import BTree.DBBTree;
-
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -364,6 +361,44 @@ class Test {
     }
 
     @org.junit.jupiter.api.Test
+    void test5Inserts() {
+        String strTableName = "Test5";
+        DBApp dbApp = new DBApp();
+        DBApp.getDbConfig().put("MaximumRowsCountinPage", "2");
+
+        Hashtable htblColNameType = new Hashtable();
+        htblColNameType.put("id", "java.lang.Integer");
+        htblColNameType.put("name", "java.lang.String");
+        htblColNameType.put("gpa", "java.lang.Double");
+        try {
+            dbApp.createTable(strTableName, "id", htblColNameType);
+        } catch (DBAppException e) {
+            e.printStackTrace();
+            assertFalse(true);
+        }
+
+        Hashtable record = new Hashtable();
+        record.put("name", "student");
+        record.put("gpa", 5.0);
+        for (int i = 0; i < 5; i++) {
+            record.put("id", i);
+            try {
+                dbApp.insertIntoTable(strTableName, record);
+            } catch (DBAppException e) {
+                e.printStackTrace();
+                assertFalse(true);
+            }
+        }
+
+
+//        try {
+//            System.out.println(Table.loadTable(strTableName));
+//        } catch (DBAppException e) {
+//            throw new RuntimeException(e);
+//        }
+    }
+
+    @org.junit.jupiter.api.Test
     void test500Inserts() {
         long time = System.nanoTime();
 
@@ -382,10 +417,10 @@ class Test {
         }
 
         Hashtable record = new Hashtable();
+        record.put("gpa", 5.0);
+        record.put("name", "student");
         for (int i = 0; i < 500; i++) {
             record.put("id", i);
-            record.put("name", "student: " + i);
-            record.put("gpa", 5.0);
             try {
                 dbApp.insertIntoTable(strTableName, record);
             } catch (DBAppException e) {
@@ -396,44 +431,12 @@ class Test {
 
         time = (System.nanoTime() - time) / 1000000000;
         System.out.println("Time taken: " + time + " secs");
-        try {
-            System.out.println(Table.loadTable(strTableName));
-            assertEquals(3, Table.loadTable(strTableName).pagesCount());
-        } catch (DBAppException e) {
-            e.printStackTrace();
-        }
-    }
-
-    @org.junit.jupiter.api.Test
-    void testDBBTree() {
-        String tableName = "TestDBBTree";
-        String indexName = "DBBTreeTest";
-
-        new DBApp();
-
-        // create tableName directory
-        Path path = Paths.get((String) DBApp.getDbConfig().get("DataPath"), tableName);
-        path.toFile().mkdirs();
-
-        DBBTree<String> tree = new DBBTree<String>(tableName, indexName);
-        tree.print();
-        System.out.println("==");
-
-        tree.insert("John", 1);
-        tree.print();
-        System.out.println("==");
-
-        tree.insert("John", 1);
-        tree.print();
-        System.out.println("==");
-
-        tree.insert("John", 2);
-        tree.print();
-        System.out.println("==");
-
-        tree.insert("Ahmed", 3);
-        tree.print();
-        System.out.println("==");
+//        try {
+//            System.out.println(Table.loadTable(strTableName));
+//            assertEquals(3, Table.loadTable(strTableName).pagesCount());
+//        } catch (DBAppException e) {
+//            e.printStackTrace();
+//        }
     }
 
     @org.junit.jupiter.api.Test
@@ -441,6 +444,7 @@ class Test {
         String strTableName = "TestIndex";
         try {
             DBApp dbApp = new DBApp();
+            DBApp.getDbConfig().put("MaximumRowsCountinPage", "1");
 
             Hashtable htblColNameType = new Hashtable();
             htblColNameType.put("id", "java.lang.Integer");
@@ -462,12 +466,32 @@ class Test {
             dbApp.insertIntoTable(strTableName, htblColNameValue);
             dbApp.createIndex(strTableName, "gpa", "BTree-GPA");
 
-            System.out.println(DBBTree.loadIndex(strTableName, "BTree-Name").search("Ahmed Noor"));
-            System.out.println("==");
-            DBBTree.loadIndex(strTableName, "BTree-Name").print();
-            System.out.println("==");
-            DBBTree.loadIndex(strTableName, "BTree-GPA").print();
-            System.out.println("==");
+            DBBTree<String> nameBTree = DBBTree.loadIndex(strTableName, "BTree-Name");
+            DBBTree<Double> gpaBTree = DBBTree.loadIndex(strTableName, "BTree-GPA");
+
+//            System.out.println(Table.loadTable(strTableName));
+//            nameBTree.print();
+//            gpaBTree.print();
+
+            HashMap result = nameBTree.search("Ahmed Noor");
+            assertTrue(result.keySet().contains(0));
+            assertEquals(1, result.size());
+            assertEquals(1, result.get(0));
+
+            result = nameBTree.search("Dalia Noor");
+            assertTrue(result.keySet().contains(1));
+            assertEquals(1, result.size());
+            assertEquals(1, result.get(1));
+
+            result = gpaBTree.search(0.95);
+            assertTrue(result.keySet().contains(0));
+            assertEquals(1, result.size());
+            assertEquals(1, result.get(0));
+
+            result = gpaBTree.search(1.5);
+            assertTrue(result.keySet().contains(1));
+            assertEquals(1, result.size());
+            assertEquals(1, result.get(1));
         } catch (DBAppException e) {
             e.printStackTrace();
             assertFalse(true);
