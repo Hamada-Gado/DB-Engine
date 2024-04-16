@@ -37,10 +37,12 @@ public class DBBTree<TKey extends Comparable<TKey>> extends BTree<TKey, HashMap<
         HashMap<Integer, Integer> values = this.search(key);
         if (values == null) {
             values = new HashMap<>();
+            values.put(value, 1);
+            super.insert(key, values);
+        } else {
+            int count = values.getOrDefault(value, 0);
+            values.put(value, count + 1);
         }
-        int count = values.getOrDefault(value, 0);
-        values.put(value, count + 1);
-        super.insert(key, values);
 
         this.saveIndex();
     }
@@ -75,12 +77,9 @@ public class DBBTree<TKey extends Comparable<TKey>> extends BTree<TKey, HashMap<
             values.remove(value);
             if (values.isEmpty()) {
                 super.delete(key);
-            } else {
-                super.insert(key, values);
             }
         } else {
             values.put(value, count - 1);
-            super.insert(key, values);
         }
 
         this.saveIndex();

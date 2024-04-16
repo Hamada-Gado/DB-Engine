@@ -469,9 +469,9 @@ class Test {
             DBBTree<String> nameBTree = DBBTree.loadIndex(strTableName, "BTree-Name");
             DBBTree<Double> gpaBTree = DBBTree.loadIndex(strTableName, "BTree-GPA");
 
-//            System.out.println(Table.loadTable(strTableName));
-//            nameBTree.print();
-//            gpaBTree.print();
+            System.out.println(Table.loadTable(strTableName));
+            nameBTree.print();
+            gpaBTree.print();
 
             HashMap result = nameBTree.search("Ahmed Noor");
             assertTrue(result.keySet().contains(0));
