@@ -322,7 +322,6 @@ public class DBApp {
                     //if the record does not have the column or the value is not equal to the value in the condition
                     //get() gets the value of the column
 
-                    // !! what is the operation???? is it always equals?
                     if (!record.get(colName).equals(htblColNameValue.get(colName))) {
                         delete = false;
                         break;
@@ -356,7 +355,7 @@ public class DBApp {
         String pKey = metaData.get(strTableName).get("clusteringKey")[0];
 
         for (String colName : indexColumns) {
-            String indexName = metaData.get(strTableName).get(colName)[2];
+            String indexName = metaData.get(strTableName).get("indexName")[0];
 
             // 2. Load the index
             DBBTree BPlusTree = DBBTree.loadIndex(strTableName, indexName);
