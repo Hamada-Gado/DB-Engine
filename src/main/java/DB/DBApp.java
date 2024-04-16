@@ -230,7 +230,19 @@ public class DBApp {
         if (metaData.get(strTableName) == null) {
             throw new DBAppException("Table does not exist");
         }
+        Object clusteringKeyValue;
 
+        String compare = metaData.get(strTableName).get("clusteringKey")[0];
+        String clustKeyType = metaData.get(strTableName).get(compare)[0];
+        if(clustKeyType.equals( "java.lang.Integer")){
+            clusteringKeyValue = Integer.parseInt(strClusteringKeyValue);
+        }
+        else if(clustKeyType.equals( "java.lang.Double")){
+            clusteringKeyValue = Double.parseDouble(strClusteringKeyValue);
+        }
+        else{
+            clusteringKeyValue = strClusteringKeyValue;
+        }
         for (String colName : htblColNameValue.keySet()) {
 
             String colType = metaData.get(strTableName).get(colName)[0];
@@ -245,7 +257,8 @@ public class DBApp {
                 throw new DBAppException("Mismatching dataTypes");
 
 
-            int[] info = Util.getRecordPos(strTableName, strClusteringKeyValue, colName);
+            String pKey = metaData.get(strTableName).get("clusteringKey")[0];
+            int[] info = Util.getRecordPos(strTableName,pKey, (Comparable) clusteringKeyValue);
             if (info[2] == 0) {
                 throw new DBAppException("Key Not found");
             }
@@ -262,15 +275,20 @@ public class DBApp {
             page.updatePage();
         }
         // Iterate over each column in the metadata
-        for (String colName : metaData.keySet()) {
+        int count = 0;
+        for (String colName : metaData.get(strTableName).keySet()) {//vip
             // Check if the column has an index
+            if(colName.equals("clusteringKey")) {
+                continue;
+            }
             String indexName = metaData.get(strTableName).get(colName)[2];
             if (!indexName.equals("null")) {
                 // Load the index
                 DBBTree index = DBBTree.loadIndex(strTableName, indexName);
 
                 // Update the index
-                int[] info = Util.getRecordPos(strTableName, strClusteringKeyValue, colName);
+                String pKey = metaData.get(strTableName).get("clusteringKey")[0];
+                int[] info = Util.getRecordPos(strTableName,pKey, (Comparable) clusteringKeyValue);
                 if (info[2] == 0) {
                     throw new DBAppException("Key Not found");
                 }

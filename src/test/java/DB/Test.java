@@ -473,4 +473,31 @@ class Test {
             assertFalse(true);
         }
     }
+    @org.junit.jupiter.api.Test
+    void testUpdateTable() throws DBAppException {
+        // Create an instance of DBApp
+        DBApp dbApp = new DBApp();
+
+        // Create a table
+        String strTableName = "Student";
+        Hashtable<String, String> htblColNameType = new Hashtable<>();
+        htblColNameType.put("id", "java.lang.Integer");
+        htblColNameType.put("name", "java.lang.String");
+        htblColNameType.put("gpa", "java.lang.Double");
+        dbApp.createTable(strTableName, "id", htblColNameType);
+
+
+        // Insert a record into the table
+        Hashtable<String, Object> htblColNameValue = new Hashtable<>();
+        htblColNameValue.put("id", 1);
+        htblColNameValue.put("name", "John Doe");
+        htblColNameValue.put("gpa", 3.5);
+        dbApp.insertIntoTable(strTableName, htblColNameValue);
+        System.out.println(Table.loadTable(strTableName));
+        // Update the record
+        Hashtable<String, Object> htblColNameValueUpdate = new Hashtable<>();
+        htblColNameValueUpdate.put("name", "Jane Doe");
+        dbApp.updateTable(strTableName, "1", htblColNameValueUpdate);
+        System.out.println(Table.loadTable(strTableName));
+    }
 }
