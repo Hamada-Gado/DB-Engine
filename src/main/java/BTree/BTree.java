@@ -1,6 +1,5 @@
 package BTree;
 
-import java.io.Serializable;
 import java.util.ArrayList;
 
 /**
@@ -11,7 +10,7 @@ import java.util.ArrayList;
  * @param < TKey > the data type of the key
  * @param < TValue > the data type of the value
  */
-public class BTree<TKey extends Comparable<TKey>, TValue> implements Serializable {
+public class BTree<TKey extends Comparable<TKey>, TValue> {
     /**
      * @uml.property name="root"
      * @uml.associationEnd multiplicity="(1 1)"
@@ -99,6 +98,36 @@ public class BTree<TKey extends Comparable<TKey>, TValue> implements Serializabl
                 lower = new ArrayList<>();
             }
         }
+    }
+
+    @Override
+    public String toString() {
+        StringBuilder res = new StringBuilder();
+
+        ArrayList<BTreeNode> upper = new ArrayList<>();
+        ArrayList<BTreeNode> lower = new ArrayList<>();
+
+        upper.add(root);
+        while (!upper.isEmpty()) {
+            BTreeNode cur = upper.get(0);
+            if (cur instanceof BTreeInnerNode) {
+                ArrayList<BTreeNode> children = ((BTreeInnerNode) cur).getChildren();
+                for (int i = 0; i < children.size(); i++) {
+                    BTreeNode child = children.get(i);
+                    if (child != null)
+                        lower.add(child);
+                }
+            }
+            res.append(cur).append(" ");
+            upper.remove(0);
+            if (upper.isEmpty()) {
+                res.append("\n");
+                upper = lower;
+                lower = new ArrayList<>();
+            }
+        }
+
+        return res.toString();
     }
 
     public BTreeLeafNode getSmallest() {

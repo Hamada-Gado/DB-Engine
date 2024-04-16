@@ -134,31 +134,19 @@ public class DBApp {
         Table table = Table.loadTable(strTableName);
 
         // Create a new B+ tree
-        DBBTree bpt = new DBBTree();
+        DBBTree bpt = new DBBTree(strTableName, strIndexName);
 
         // Iterate over all the records in the table
         for (int i = 0; i < table.pagesCount(); i++) {
             Page page = table.getPage(i);
-            LinkedList<Integer> recordPages;
             for (Hashtable<String, Object> record : page.getRecords()) {
                 // Insert the value of the column and the record's key into the B+ tree
-                LinkedList<Integer> search = bpt.search((Comparable) record.get(strColName));
-                recordPages = search == null ? new LinkedList<>() : search;
-                recordPages.add(i);
-                bpt.insert((Comparable) record.get(strColName), recordPages);
+                bpt.insert((Comparable) record.get(strColName), i);
             }
         }
 
         // Save the B+ tree to the disk
-        Path indexPath = Paths.get((String) getDbConfig().get("DataPath"), strTableName, strIndexName + ".ser");
-        try (
-                FileOutputStream fileOut = new FileOutputStream(indexPath.toAbsolutePath().toString());
-                ObjectOutputStream out = new ObjectOutputStream(fileOut)) {
-            out.writeObject(bpt);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-
+        bpt.saveIndex();
 
         // get metadata
         Hashtable<String, Hashtable<String, String[]>> metadata = Util.getMetadata(strTableName);
@@ -167,7 +155,7 @@ public class DBApp {
 
         String metadataPath = getDbConfig().getProperty("MetadataPath");
         try (FileWriter writer = new FileWriter(metadataPath, true)) {
-            writer.write(strTableName + "," + strColName + "," + columnDataArray[0] + "," + columnDataArray[1] + "," + strIndexName + ",B+Tree\n");
+            writer.write(strTableName + "," + strColName + "," + columnDataArray[0] + "," + columnDataArray[1] + "," + strIndexName + ",B+tree\n");
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -181,7 +169,7 @@ public class DBApp {
         //ToDo: validation
 
         Hashtable<String, Hashtable<String, String[]>> metaData = Util.getMetadata(strTableName);
-        if (metaData == null) {
+        if (metaData.get(strTableName) == null) {
             throw new DBAppException("Table not found");
         }
 
@@ -199,20 +187,24 @@ public class DBApp {
         int pageNo = recordPos[0];
         int recordNo = recordPos[1];
 
-        for (int i = pageNo; i <= currentTable.pagesCount(); i++) {
-            if (i < currentTable.pagesCount()) {
-                Page page = currentTable.getPage(i);
-                if (!currentTable.getPage(i).isFull()) {
+        for (int currentPageNo = pageNo; currentPageNo <= currentTable.pagesCount(); currentPageNo++) {
+            if (currentPageNo < currentTable.pagesCount()) {
+                Page page = currentTable.getPage(currentPageNo);
+                if (!page.isFull()) {
                     currentTable.addRecord(recordNo + 1, htblColNameValue, pKey, page);
+                    Util.updateIndexes(strTableName, currentPageNo, recordNo + 1, metaData);
                     break;
                 } else {
                     currentTable.addRecord(recordNo, htblColNameValue, pKey, page);
-                    htblColNameValue = currentTable.removeRecord(currentTable.getPage(i).getMax() - 1, pKey, page);
+                    Util.updateIndexes(strTableName, currentPageNo, recordNo, metaData);
+                    htblColNameValue = currentTable.removeRecord(currentTable.getPage(currentPageNo).getMax() - 1, pKey, page);
+                    Util.deleteIndexes(strTableName, currentPageNo, currentTable.getPage(currentPageNo).getMax() - 1, metaData);
                     recordNo = 0;
                 }
             } else {
                 Page newPage = currentTable.addPage(Integer.parseInt((String) DBApp.getDbConfig().get("MaximumRowsCountinPage")));
                 currentTable.addRecord(htblColNameValue, pKey, newPage);
+                Util.updateIndexes(strTableName, pageNo, recordNo, metaData);
                 break;
             }
         }
@@ -289,7 +281,7 @@ public class DBApp {
 
                 Object oldValue = record.get(colName);
                 Object newValue = htblColNameValue.get(colName);
-                LinkedList<Integer> pages = (LinkedList<Integer>) index.search((Comparable) oldValue);
+                HashMap<Integer, Integer> pages = index.search((Comparable) oldValue); // fixed??
                 if (pages != null) {
                     pages.remove((Integer) info[0]);
                     if (pages.isEmpty()) {
@@ -300,13 +292,13 @@ public class DBApp {
                 }
                 pages = index.search((Comparable) newValue);
                 if (pages == null) {
-                    pages = new LinkedList<>();
+                    pages = new HashMap<>(); //fix
                 }
-                pages.add(info[0]);
+                pages.put(0, info[0]); //fix
                 index.insert((Comparable) newValue, pages);
 
                 // Save the index back to the disk
-                Path indexPath = Paths.get((String) db_config.get("DataPath"), strTableName, indexName + ".ser");
+                Path indexPath = Paths.get((String) getDbConfig().get("DataPath"), strTableName, indexName + ".ser");
                 try {
                     FileOutputStream fileOut = new FileOutputStream(indexPath.toAbsolutePath().toString());
                     ObjectOutputStream out = new ObjectOutputStream(fileOut);
@@ -412,7 +404,7 @@ public class DBApp {
             //get the value of the index column in the condition
             Object value = htblColNameValue.get(indexColumn);
             //get the page number of the record
-            LinkedList<Integer> pageNumbers = index.search((Integer) value);
+            HashMap<Integer, Integer> pageNumbers = index.search((Integer) value);
 
 //            if (pageNumber == null) {throw new DBAppException("wut da helllllllll");}
 
@@ -458,7 +450,6 @@ public class DBApp {
                     //if the page is empty, remove it
                     if (p.isEmpty()) {
                         table.getPagesPath().remove(pageNumbers.get(0));
-
                     } else {
                         p.updatePage(); //serialize the page
                     }
@@ -468,6 +459,64 @@ public class DBApp {
         table.updateTable(); //serialize the table
     }
 
+    // Following method returns a set of the pages of the select query using any index
+    private HashSet<Integer> filterPagesByIndex(
+            SQLTerm[] arrSQLTerms,
+            String[] strarrOperators) throws DBAppException {
+
+        HashSet<Integer> result = new HashSet<>();
+        String tableName = arrSQLTerms[0]._strTableName;
+
+        Hashtable<String, Hashtable<String, String[]>> metaData = Util.getMetadata(tableName);
+        LinkedList<String> indexColumns = Util.getIndexColumns(metaData, tableName);
+
+        for (String col : indexColumns) {
+            String indexName = metaData.get(tableName).get(col)[2];
+            DBBTree index = DBBTree.loadIndex(tableName, indexName);
+            HashSet<Integer> res = new HashSet<>();
+            // only consider filtering using the index if the condition is anded
+            for (int i = 0; i < arrSQLTerms.length; i++) {
+                SQLTerm term = arrSQLTerms[i];
+                String before = i == 0 ? null : strarrOperators[i - 1];
+                String after = i == arrSQLTerms.length - 1 ? null : strarrOperators[i];
+
+                if (term._strColumnName.equals(col)
+                        && ((before != null && before.equals("AND"))
+                        || (after != null && after.equals("AND")))) {
+
+                    Object value = term._objValue;
+                    HashMap<Integer, Integer> search = index.search((Comparable) value);
+                    if (search != null) {
+                        res.addAll(search.keySet());
+                    }
+                }
+            }
+
+            result.addAll(res);
+        }
+
+        return result;
+    }
+
+    private void selectFromTableHelper(SQLTerm[] arrSQLTerms, String[] strarrOperators,
+                                       Hashtable<String, Object> record, LinkedList<Hashtable<String, Object>> result) {
+
+        if (arrSQLTerms.length == 1) {
+            SQLTerm term = arrSQLTerms[0];
+            Object value = record.get(term._strColumnName);
+            if (Util.evaluateSqlTerm((Comparable) value, term._strOperator, (Comparable) term._objValue)) {
+                result.add(record);
+            }
+
+            return;
+        }
+
+        LinkedList<Object> postfix = Util.toPostfix(record, arrSQLTerms, strarrOperators);
+        boolean res = Util.evaluatePostfix(postfix);
+        if (res) {
+            result.add(record);
+        }
+    }
 
     // select * from student where name = "John Noor" OR gpa = 1.5 AND id = 2343432;
     public Iterator selectFromTable(@NotNull SQLTerm[] arrSQLTerms,
@@ -481,6 +530,8 @@ public class DBApp {
             throw new DBAppException("Invalid number of operators");
         }
 
+        String tableName = arrSQLTerms[0]._strTableName;
+
         for (SQLTerm term : arrSQLTerms) {
             if (!term._strOperator.equals("=") &&
                     !term._strOperator.equals("!=") &&
@@ -492,29 +543,15 @@ public class DBApp {
                 throw new DBAppException("Invalid operator");
             }
 
-            Util.validateTypes(term._strColumnName, new Hashtable<>(Map.of(term._strColumnName, term._objValue)));
+            Util.validateTypes(tableName, new Hashtable<>(Map.of(term._strColumnName, term._objValue)));
         }
 
-        String tableName = arrSQLTerms[0]._strTableName;
+        HashSet<Integer> filteredPages = filterPagesByIndex(arrSQLTerms, strarrOperators);
         LinkedList<Hashtable<String, Object>> result = new LinkedList<>();
 
         for (Page p : Table.loadTable(tableName)) {
             for (Hashtable<String, Object> record : p.getRecords()) {
-
-                if (arrSQLTerms.length == 1) {
-                    SQLTerm term = arrSQLTerms[0];
-                    Object value = record.get(term._strColumnName);
-                    if (Util.evaluateSqlTerm(value, term._strOperator, term._objValue)) {
-                        result.add(record);
-                    }
-                    continue;
-                }
-
-                LinkedList<Object> postfix = Util.toPostfix(record, arrSQLTerms, strarrOperators);
-                boolean res = Util.evaluatePostfix(postfix);
-                if (res) {
-                    result.add(record);
-                }
+                selectFromTableHelper(arrSQLTerms, strarrOperators, record, result);
             }
         }
 
