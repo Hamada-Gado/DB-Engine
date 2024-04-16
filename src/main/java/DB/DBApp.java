@@ -139,13 +139,9 @@ public class DBApp {
         // Iterate over all the records in the table
         for (int i = 0; i < table.pagesCount(); i++) {
             Page page = table.getPage(i);
-            LinkedList<Integer> recordPages;
             for (Hashtable<String, Object> record : page.getRecords()) {
                 // Insert the value of the column and the record's key into the B+ tree
-                LinkedList<Integer> search = bpt.search((Comparable) record.get(strColName));
-                recordPages = search == null ? new LinkedList<>() : search;
-                recordPages.add(i);
-                bpt.insert((Comparable) record.get(strColName), recordPages);
+                bpt.insert((Comparable) record.get(strColName), i);
             }
         }
 
@@ -159,7 +155,7 @@ public class DBApp {
 
         String metadataPath = getDbConfig().getProperty("MetadataPath");
         try (FileWriter writer = new FileWriter(metadataPath, true)) {
-            writer.write(strTableName + "," + strColName + "," + columnDataArray[0] + "," + columnDataArray[1] + "," + strIndexName + ",B+Tree\n");
+            writer.write(strTableName + "," + strColName + "," + columnDataArray[0] + "," + columnDataArray[1] + "," + strIndexName + ",B+tree\n");
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -173,7 +169,7 @@ public class DBApp {
         //ToDo: validation
 
         Hashtable<String, Hashtable<String, String[]>> metaData = Util.getMetadata(strTableName);
-        if (metaData == null) {
+        if (metaData.get(strTableName) == null) {
             throw new DBAppException("Table not found");
         }
 
@@ -191,20 +187,24 @@ public class DBApp {
         int pageNo = recordPos[0];
         int recordNo = recordPos[1];
 
-        for (int i = pageNo; i <= currentTable.pagesCount(); i++) {
-            if (i < currentTable.pagesCount()) {
-                Page page = currentTable.getPage(i);
-                if (!currentTable.getPage(i).isFull()) {
+        for (int currentPageNo = pageNo; currentPageNo <= currentTable.pagesCount(); currentPageNo++) {
+            if (currentPageNo < currentTable.pagesCount()) {
+                Page page = currentTable.getPage(currentPageNo);
+                if (!page.isFull()) {
                     currentTable.addRecord(recordNo + 1, htblColNameValue, pKey, page);
+                    Util.updateIndexes(strTableName, currentPageNo, recordNo + 1, metaData);
                     break;
                 } else {
                     currentTable.addRecord(recordNo, htblColNameValue, pKey, page);
-                    htblColNameValue = currentTable.removeRecord(currentTable.getPage(i).getMax() - 1, pKey, page);
+                    Util.updateIndexes(strTableName, currentPageNo, recordNo, metaData);
+                    htblColNameValue = currentTable.removeRecord(currentTable.getPage(currentPageNo).getMax() - 1, pKey, page);
+                    Util.deleteIndexes(strTableName, currentPageNo, currentTable.getPage(currentPageNo).getMax() - 1, metaData);
                     recordNo = 0;
                 }
             } else {
                 Page newPage = currentTable.addPage(Integer.parseInt((String) DBApp.getDbConfig().get("MaximumRowsCountinPage")));
                 currentTable.addRecord(htblColNameValue, pKey, newPage);
+                Util.updateIndexes(strTableName, pageNo, recordNo, metaData);
                 break;
             }
         }
@@ -355,7 +355,7 @@ public class DBApp {
             //get the value of the index column in the condition
             Object value = htblColNameValue.get(indexColumn);
             //get the page number of the record
-            LinkedList<Integer> pageNumbers = index.search((Integer) value);
+            HashMap<Integer, Integer> pageNumbers = index.search((Integer) value);
 
 //            if (pageNumber == null) {throw new DBAppException("wut da helllllllll");}
 
@@ -401,7 +401,6 @@ public class DBApp {
                     //if the page is empty, remove it
                     if (p.isEmpty()) {
                         table.getPagesPath().remove(pageNumbers.get(0));
-
                     } else {
                         p.updatePage(); //serialize the page
                     }
@@ -437,9 +436,9 @@ public class DBApp {
                         || (after != null && after.equals("AND")))) {
 
                     Object value = term._objValue;
-                    LinkedList<Integer> search = index.search((Comparable) value);
+                    HashMap<Integer, Integer> search = index.search((Comparable) value);
                     if (search != null) {
-                        res.addAll(search);
+                        res.addAll(search.keySet());
                     }
                 }
             }
