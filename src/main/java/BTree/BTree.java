@@ -1,6 +1,5 @@
 package BTree;
 
-import java.io.Serializable;
 import java.util.ArrayList;
 
 /**
@@ -11,7 +10,7 @@ import java.util.ArrayList;
  * @param < TKey > the data type of the key
  * @param < TValue > the data type of the value
  */
-public class BTree<TKey extends Comparable<TKey>, TValue> implements Serializable {
+public class BTree<TKey extends Comparable<TKey>, TValue> {
     /**
      * @uml.property name="root"
      * @uml.associationEnd multiplicity="(1 1)"
