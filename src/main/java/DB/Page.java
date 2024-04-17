@@ -41,6 +41,10 @@ public class Page implements Serializable {
         return records.size() == max;
     }
 
+    public int size() {
+        return records.size();
+    }
+
     public boolean isEmpty() {
         return records.isEmpty();
     }
