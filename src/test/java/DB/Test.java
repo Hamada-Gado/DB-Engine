@@ -211,7 +211,7 @@ class Test {
             int j;
             for (int i = j = 0; i < 5; i++) {
                 j = (i + 1) * 10;
-                assertEquals(j, page.getRecords().get(i).get("id"));
+                assertEquals(j, page.getRecords().get(i).hashtable().get("id"));
             }
         } catch (DBAppException e) {
             e.printStackTrace();
@@ -311,8 +311,8 @@ class Test {
 //            System.out.println(Table.loadTable(strTableName));
 //            System.out.println(list);
 
-            assertEquals(2, ((Hashtable) list.get(0)).get("id"));
-            assertEquals(56, ((Hashtable) list.get(1)).get("id"));
+            assertEquals(2, ((Record) list.get(0)).hashtable().get("id"));
+            assertEquals(56, ((Record) list.get(1)).hashtable().get("id"));
         } catch (DBAppException e) {
             e.printStackTrace();
             assertTrue(false);

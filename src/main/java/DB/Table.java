@@ -3,7 +3,6 @@ package DB;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.*;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
@@ -108,21 +107,21 @@ public class Table implements Iterable<Page>, Serializable {
         return pagesPath.size();
     }
 
-    public void addRecord(Tuple record, String pKey, Page page) {
+    public void addRecord(Record record, String pKey, Page page) {
         page.add(record);
-        clusteringKeyMin.add(page.getPageNumber(), (Comparable) page.getRecords().getFirst().get(pKey));
+        clusteringKeyMin.add(page.getPageNumber(), (Comparable) page.getRecords().getFirst().hashtable().get(pKey));
         updateTable();
     }
 
-    public void addRecord(int recordNo, Tuple record, String pKey, Page page) {
+    public void addRecord(int recordNo, Record record, String pKey, Page page) {
         page.add(recordNo, record);
-        clusteringKeyMin.add(page.getPageNumber(), (Comparable) page.getRecords().getFirst().get(pKey));
+        clusteringKeyMin.add(page.getPageNumber(), (Comparable) page.getRecords().getFirst().hashtable().get(pKey));
         updateTable();
     }
 
-    public Tuple removeRecord(int recordNo, String pKey, Page page) {
-        Tuple htbl = page.remove(recordNo);
-        clusteringKeyMin.add(page.getPageNumber(), (Comparable) page.getRecords().getFirst().get(pKey));
+    public Record removeRecord(int recordNo, String pKey, Page page) {
+        Record htbl = page.remove(recordNo);
+        clusteringKeyMin.add(page.getPageNumber(), (Comparable) page.getRecords().getFirst().hashtable().get(pKey));
         updateTable();
 
         return htbl;

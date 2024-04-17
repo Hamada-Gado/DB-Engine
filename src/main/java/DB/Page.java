@@ -17,7 +17,7 @@ public class Page implements Serializable {
     private final String tableName;
     private final int pageNumber;
     private final int max;
-    public Vector<Tuple> records;
+    public Vector<Record> records;
 
     public Page(String tableName, int pageNumber, int max) {
         this.tableName = tableName;
@@ -57,22 +57,22 @@ public class Page implements Serializable {
         return max;
     }
 
-    public Vector<Tuple> getRecords() {
+    public Vector<Record> getRecords() {
         return records;
     }
 
-    public void add(Tuple record) {
+    public void add(Record record) {
         records.add(record);
         updatePage();
     }
 
-    public void add(int recordNo, Tuple record) {
+    public void add(int recordNo, Record record) {
         records.add(recordNo, record);
         updatePage();
     }
 
-    public Tuple remove(int recordNo) {
-        Tuple htbl = records.remove(recordNo);
+    public Record remove(int recordNo) {
+        Record htbl = records.remove(recordNo);
         updatePage();
         return htbl;
     }
@@ -81,7 +81,7 @@ public class Page implements Serializable {
     public String toString() {
         StringBuilder res = new StringBuilder();
 
-        for (Tuple record : records) {
+        for (Record record : records) {
             res.append(record).append("\n");
         }
 

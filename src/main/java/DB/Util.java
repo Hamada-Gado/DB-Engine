@@ -124,7 +124,7 @@ public class Util {
 
         while (true) {
             int midRecord = (leftRecord + rightRecord) / 2;
-            Hashtable<String, Object> record = page.getRecords().get(midRecord);
+            Hashtable<String, Object> record = page.getRecords().get(midRecord).hashtable();
             Comparable midValue = (Comparable) record.get(clusteringKey);
 
             if (midValue.equals(clusteringKeyValue)) {
@@ -343,7 +343,7 @@ public class Util {
                                      Hashtable<String, Hashtable<String, String[]>> metadata) throws DBAppException {
         LinkedList<String> indexColumns = Util.getIndexColumns(metadata, tableName);
         Table table = Table.loadTable(tableName);
-        Hashtable record = table.getPage(pageNo).getRecords().get(recordNo);
+        Hashtable record = table.getPage(pageNo).getRecords().get(recordNo).hashtable();
 
         for (String colName : indexColumns) {
             String indexName = metadata.get(tableName).get(colName)[2];
@@ -360,7 +360,7 @@ public class Util {
                                      Hashtable<String, Hashtable<String, String[]>> metadata) throws DBAppException {
         LinkedList<String> indexColumns = Util.getIndexColumns(metadata, tableName);
         Table table = Table.loadTable(tableName);
-        Hashtable record = table.getPage(pageNo).getRecords().get(recordNo);
+        Hashtable record = table.getPage(pageNo).getRecords().get(recordNo).hashtable();
 
         for (String colName : indexColumns) {
             String indexName = metadata.get(tableName).get(colName)[2];
