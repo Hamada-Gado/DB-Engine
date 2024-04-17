@@ -9,45 +9,6 @@ import static org.junit.jupiter.api.Assertions.*;
 @SuppressWarnings("ALL")
 class Test {
 
-    void naiveInsertIntoTable(String strTableName,
-                              Hashtable<String, Object> htblColNameValue) throws DBAppException {
-        naiveInsertIntoTable(strTableName, htblColNameValue, 0, 0);
-    }
-
-    void naiveInsertIntoTable(String strTableName,
-                              Hashtable<String, Object> htblColNameValue, int pageNo, int recordNo) throws DBAppException {
-        Hashtable<String, Hashtable<String, String[]>> metaData = Util.getMetadata(strTableName);
-        if (metaData == null) {
-            throw new DBAppException("Table not found");
-        }
-
-        String pKey = metaData.get(strTableName).get("clusteringKey")[0];
-        Object pValue = htblColNameValue.get(pKey);
-
-        Table currentTable = Table.loadTable(strTableName);
-
-        for (int i = pageNo; i <= currentTable.pagesCount(); i++) {
-            if (i < currentTable.pagesCount()) {
-                Page page = currentTable.getPage(i);
-                if (!currentTable.getPage(i).isFull()) {
-                    currentTable.addRecord(recordNo, htblColNameValue, pKey, page);
-                    break;
-                } else {
-                    currentTable.addRecord(recordNo, htblColNameValue, pKey, page);
-                    htblColNameValue = currentTable.removeRecord(currentTable.getPage(i).getMax() - 1, pKey, page);
-                    recordNo = 0;
-                }
-            } else {
-                Page newPage = currentTable.addPage(Integer.parseInt((String) DBApp.getDbConfig().get("MaximumRowsCountinPage")));
-                currentTable.addRecord(htblColNameValue, pKey, newPage);
-                break;
-            }
-        }
-
-        currentTable.updateTable();
-    }
-
-
     @org.junit.jupiter.api.Test
     void testToPostfix2() {
         SQLTerm[] arrSQLTerms = new SQLTerm[2];
@@ -204,50 +165,45 @@ class Test {
         assertEquals(false, result);
     }
 
-    void testNaiveInsertIntoTable(String strTableName) {
-        DBApp dbApp = new DBApp();
-
-        Hashtable htblColNameType = new Hashtable();
-        htblColNameType.put("id", "java.lang.Integer");
-        htblColNameType.put("name", "java.lang.String");
-        htblColNameType.put("gpa", "java.lang.Double");
+    void testInsertIntoTable(String strTableName) {
         try {
+            DBApp dbApp = new DBApp();
+
+            Hashtable htblColNameType = new Hashtable();
+            htblColNameType.put("id", "java.lang.Integer");
+            htblColNameType.put("name", "java.lang.String");
+            htblColNameType.put("gpa", "java.lang.Double");
             dbApp.createTable(strTableName, "id", htblColNameType);
-        } catch (DBAppException e) {
-            e.printStackTrace();
-            assertTrue(false);
-        }
 
-        try {
             Hashtable htblColNameValue = new Hashtable();
             htblColNameValue.put("id", Integer.valueOf(20));
             htblColNameValue.put("name", new String("Ahmed Noor"));
             htblColNameValue.put("gpa", Double.valueOf(0.95));
-            naiveInsertIntoTable(strTableName, htblColNameValue, 0, 0);
+            dbApp.insertIntoTable(strTableName, htblColNameValue);
 
             htblColNameValue.clear();
             htblColNameValue.put("id", Integer.valueOf(10));
             htblColNameValue.put("name", new String("Omar Noor"));
             htblColNameValue.put("gpa", Double.valueOf(0.95));
-            naiveInsertIntoTable(strTableName, htblColNameValue, 0, 0);
+            dbApp.insertIntoTable(strTableName, htblColNameValue);
 
             htblColNameValue.clear();
             htblColNameValue.put("id", Integer.valueOf(50));
             htblColNameValue.put("name", new String("Dalia Noor"));
             htblColNameValue.put("gpa", Double.valueOf(1.25));
-            naiveInsertIntoTable(strTableName, htblColNameValue, 0, 2);
+            dbApp.insertIntoTable(strTableName, htblColNameValue);
 
             htblColNameValue.clear();
             htblColNameValue.put("id", Integer.valueOf(30));
             htblColNameValue.put("name", new String("John Noor"));
             htblColNameValue.put("gpa", Double.valueOf(1.5));
-            naiveInsertIntoTable(strTableName, htblColNameValue, 0, 2);
+            dbApp.insertIntoTable(strTableName, htblColNameValue);
 
             htblColNameValue.clear();
             htblColNameValue.put("id", Integer.valueOf(40));
             htblColNameValue.put("name", new String("Zaky Noor"));
             htblColNameValue.put("gpa", Double.valueOf(0.88));
-            naiveInsertIntoTable(strTableName, htblColNameValue, 0, 3);
+            dbApp.insertIntoTable(strTableName, htblColNameValue);
 
             Table table = Table.loadTable(strTableName);
             assertEquals(1, table.pagesCount());
@@ -265,7 +221,7 @@ class Test {
     @org.junit.jupiter.api.Test
     void testGetRecordPos() {
         String strTableName = "TestGetRecordPos";
-        testNaiveInsertIntoTable(strTableName);
+        testInsertIntoTable(strTableName);
 
         try {
             int[] recordPos;
@@ -385,7 +341,7 @@ class Test {
             }
 
             assertEquals(3, Table.loadTable(strTableName).pagesCount());
-            System.out.println(Table.loadTable(strTableName));
+//            System.out.println(Table.loadTable(strTableName));
         } catch (DBAppException e) {
             e.printStackTrace();
             assertFalse(true);
@@ -417,7 +373,7 @@ class Test {
             System.out.println("Time taken: " + time + " secs");
             Table table = Table.loadTable(strTableName);
 
-            System.out.println(table);
+//            System.out.println(table);
             assertEquals(3, table.pagesCount());
         } catch (DBAppException e) {
             e.printStackTrace();
