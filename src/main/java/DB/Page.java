@@ -42,6 +42,10 @@ public class Page implements Serializable {
         return records.size() == max;
     }
 
+    public int size() {
+        return records.size();
+    }
+
     public boolean isEmpty() {
         return records.isEmpty();
     }
@@ -88,7 +92,10 @@ public class Page implements Serializable {
 
             res.append(tuple).append("\n");
         }
-        res.deleteCharAt(res.length() - 1);
+
+        if (!records.isEmpty()) {
+            res.deleteCharAt(res.length() - 1);
+        }
 
         return res.toString();
     }
