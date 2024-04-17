@@ -7,7 +7,6 @@ import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Hashtable;
 import java.util.Vector;
 
 /**
@@ -18,7 +17,7 @@ public class Page implements Serializable {
     private final String tableName;
     private final int pageNumber;
     private final int max;
-    public Vector<Hashtable<String, Object>> records;
+    public Vector<Tuple> records;
 
     public Page(String tableName, int pageNumber, int max) {
         this.tableName = tableName;
@@ -54,22 +53,22 @@ public class Page implements Serializable {
         return max;
     }
 
-    public Vector<Hashtable<String, Object>> getRecords() {
+    public Vector<Tuple> getRecords() {
         return records;
     }
 
-    public void add(Hashtable<String, Object> record) {
+    public void add(Tuple record) {
         records.add(record);
         updatePage();
     }
 
-    public void add(int recordNo, Hashtable<String, Object> record) {
+    public void add(int recordNo, Tuple record) {
         records.add(recordNo, record);
         updatePage();
     }
 
-    public Hashtable<String, Object> remove(int recordNo) {
-        Hashtable htbl = records.remove(recordNo);
+    public Tuple remove(int recordNo) {
+        Tuple htbl = records.remove(recordNo);
         updatePage();
         return htbl;
     }
@@ -78,18 +77,11 @@ public class Page implements Serializable {
     public String toString() {
         StringBuilder res = new StringBuilder();
 
-        for (Hashtable<String, Object> record : records) {
-            StringBuilder tuple = new StringBuilder();
-
-            for (String key : record.keySet()) {
-                tuple.append(record.get(key)).append(",");
-            }
-            tuple.deleteCharAt(tuple.length() - 1);
-
-            res.append(tuple).append("\n");
+        for (Tuple record : records) {
+            res.append(record).append("\n");
         }
 
-        if (!records.isEmpty()) {
+        if (!res.isEmpty()) {
             res.deleteCharAt(res.length() - 1);
         }
 

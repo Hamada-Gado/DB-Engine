@@ -195,16 +195,16 @@ public class DBApp {
             if (i < currentTable.pagesCount()) {
                 Page page = currentTable.getPage(i);
                 if (!currentTable.getPage(i).isFull()) {
-                    currentTable.addRecord(recordNo + 1, htblColNameValue, pKey, page);
+                    currentTable.addRecord(recordNo + 1, (Tuple) htblColNameValue, pKey, page);
                     break;
                 } else {
-                    currentTable.addRecord(recordNo, htblColNameValue, pKey, page);
+                    currentTable.addRecord(recordNo, (Tuple) htblColNameValue, pKey, page);
                     htblColNameValue = currentTable.removeRecord(currentTable.getPage(i).getMax() - 1, pKey, page);
                     recordNo = 0;
                 }
             } else {
                 Page newPage = currentTable.addPage(Integer.parseInt((String) DBApp.getDbConfig().get("MaximumRowsCountinPage")));
-                currentTable.addRecord(htblColNameValue, pKey, newPage);
+                currentTable.addRecord((Tuple) htblColNameValue, pKey, newPage);
                 break;
             }
         }
@@ -251,8 +251,8 @@ public class DBApp {
             }
 
             Page page = table.getPage(info[0]);
-            Vector<Hashtable<String, Object>> records = page.getRecords();
-            Hashtable<String, Object> record = records.get(info[1]);
+            Vector<Tuple> records = page.getRecords();
+            Tuple record = records.get(info[1]);
             record.forEach((key, value) -> {
                 if (htblColNameValue.containsKey(key)) {
                     record.put(key, htblColNameValue.get(key));
