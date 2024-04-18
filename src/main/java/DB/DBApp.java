@@ -167,8 +167,28 @@ public class DBApp {
     public void insertIntoTable(String strTableName,
                                 Hashtable<String, Object> htblColNameValue) throws DBAppException {
         //ToDo: validation
+        //lw el insert mfhoosh values
+        if  (htblColNameValue == null){
+            throw new DBAppException(("No value being inserted"))
+        }
 
         Hashtable<String, Hashtable<String, String[]>> metaData = Util.getMetadata(strTableName);
+
+        //lw el insert fe data types 8alat
+        int c = 1;
+        for (String key : htblColNameValue.keySet()) {
+            if (!(htblColNameValue.get(key).getClass().getName() == metaData.get(strTableName).get("Column Type")[c])) {
+                throw new DBAppException("Invalid data type in new entry");
+            }
+            c++;
+        }
+
+        //lw el insert 3ndo columns msh nafs el 3adad zy el table
+        if (!(htblColNameValue.size()==metaData.size())){
+            throw new DBAppException("Invalid record being inserted");
+        }
+
+
         if (metaData.get(strTableName) == null) {
             throw new DBAppException("Table not found");
         }
