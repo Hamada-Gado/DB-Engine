@@ -148,15 +148,9 @@ public class DBApp {
                 bpt.insert((Comparable) record.hashtable().get(strColName), i);
             }
         }
-        System.out.println("DONE INSERTING");
-        System.out.println(bpt);
 
-        // serialize the B+ tree
+        // Save the B+ tree to the disk
         bpt.saveIndex();
-
-        // load the B+ tree from the disk
-        DBBTree tmp = DBBTree.loadIndex(strTableName, strIndexName);
-        System.out.println(tmp);
 
         // get metadata
         Hashtable<String, Hashtable<String, String[]>> metadata = Util.getMetadata(strTableName);
@@ -170,7 +164,6 @@ public class DBApp {
             throw new RuntimeException(e);
         }
     }
-
 
     // following method inserts one row only.
     // htblColNameValue must include a value for the primary key
