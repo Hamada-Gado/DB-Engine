@@ -7,6 +7,8 @@ import java.io.*;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedList;
 
 /**
  * The HashMap is of the form (page number, count of the value in the page)
@@ -33,37 +35,29 @@ public class DBBTree<TKey extends Comparable<TKey>> extends BTree<TKey, HashMap<
         return super.search(key);
     }
 
+    public HashSet<Integer> searchRange(TKey lowerBound, TKey upperBound) {
+        LinkedList<HashMap<Integer, Integer>> res = super.search(lowerBound, upperBound);
+        HashSet<Integer> set = new HashSet<>();
+        for (HashMap<Integer, Integer> map : res) {
+            set.addAll(map.keySet());
+        }
+
+        return set;
+    }
+
     public void insert(TKey key, Integer value) {
         HashMap<Integer, Integer> values = this.search(key);
         if (values == null) {
             values = new HashMap<>();
+            values.put(value, 1);
+            super.insert(key, values);
+        } else {
+            int count = values.getOrDefault(value, 0);
+            values.put(value, count + 1);
         }
-        int count = values.getOrDefault(value, 0);
-        values.put(value, count + 1);
-        super.insert(key, values);
 
         this.saveIndex();
     }
-
-
-// This is prob useless
-//    public void insert(TKey key, Integer value, int prevValue) {
-//        HashMap<Integer, Integer> values = this.search(key);
-//
-//        if (values == null) {
-//            this.insert(key, value);
-//            return;
-//        }
-//
-//        int count = values.getOrDefault(prevValue, 0);
-//        if (count == 1) {
-//            values.remove(prevValue);
-//        } else {
-//            values.put(prevValue, count - 1);
-//        }
-//
-//        this.insert(key, value);
-//    }
 
     public void delete(TKey key, Integer value) {
         HashMap<Integer, Integer> values = this.search(key);
@@ -75,12 +69,9 @@ public class DBBTree<TKey extends Comparable<TKey>> extends BTree<TKey, HashMap<
             values.remove(value);
             if (values.isEmpty()) {
                 super.delete(key);
-            } else {
-                super.insert(key, values);
             }
         } else {
             values.put(value, count - 1);
-            super.insert(key, values);
         }
 
         this.saveIndex();
@@ -101,9 +92,9 @@ public class DBBTree<TKey extends Comparable<TKey>> extends BTree<TKey, HashMap<
     }
 
     // fetch the bplustree index from the disk
-    public static DBBTree loadIndex(String TableName, String IndexName) throws DBAppException {
+    public static DBBTree loadIndex(String tableName, String indexName) throws DBAppException {
         DBBTree tree;
-        Path file = Paths.get((String) DBApp.getDbConfig().get("DataPath"), TableName, IndexName + ".ser");
+        Path file = Paths.get((String) DBApp.getDbConfig().get("DataPath"), tableName, indexName + ".ser");
 
         if (!file.toFile().exists()) {
             throw new DBAppException("Index file does not exist");

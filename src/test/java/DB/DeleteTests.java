@@ -1,6 +1,5 @@
 package DB;
 
-
 import BTree.DBBTree;
 
 import java.util.Hashtable;
@@ -8,9 +7,7 @@ import java.util.Hashtable;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-@SuppressWarnings("ALL")
-class Test {
-
+public class DeleteTests {
     @org.junit.jupiter.api.Test
     void testDeleteMultipleFromTable() {
         String strTableName = "Test";
@@ -178,53 +175,5 @@ class Test {
             throw new RuntimeException(e);
         }
     }
-
-    @org.junit.jupiter.api.Test
-    void testCreateIndex() {
-        String strTableName = "Test";
-        DBApp dbApp = new DBApp();
-
-        Hashtable htblColNameType = new Hashtable();
-        htblColNameType.put("id", "java.lang.Integer");
-        htblColNameType.put("name", "java.lang.String");
-        htblColNameType.put("gpa", "java.lang.Double");
-        try {
-            dbApp.createTable(strTableName, "id", htblColNameType);
-        } catch (DBAppException e) {
-            e.printStackTrace();
-            assertTrue(false);
-        }
-
-        // Insert multiple rows
-        for (int i = 0; i < 10; i++) {
-            Hashtable htblColNameValue = new Hashtable();
-            htblColNameValue.put("id", Integer.valueOf(i));
-            htblColNameValue.put("name", new String("Name " + i));
-            htblColNameValue.put("gpa", Double.valueOf(i * 0.1));
-            try {
-                dbApp.insertIntoTable(strTableName, htblColNameValue);
-            } catch (DBAppException e) {
-                e.printStackTrace();
-                assertTrue(false);
-            }
-        }
-
-        // Create an index on the 'id' column
-        try {
-            dbApp.createIndex(strTableName, "name", "nameIndex");
-        } catch (DBAppException e) {
-            e.printStackTrace();
-            assertTrue(false);
-        }
-
-        // Check if the index has been created successfully
-        try {
-            DBBTree index = DBBTree.loadIndex(strTableName, "nameIndex");
-            System.out.println("index after loading");
-            System.out.println(index);
-        } catch (DBAppException e) {
-            e.printStackTrace();
-            assertTrue(false);
-        }
-    }
 }
+

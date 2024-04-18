@@ -1,6 +1,5 @@
 package DB;
 
-import BTree.BTree;
 import BTree.DBBTree;
 import org.jetbrains.annotations.NotNull;
 
@@ -131,6 +130,10 @@ public class DBApp {
     public void createIndex(String strTableName,
                             String strColName,
                             String strIndexName) throws DBAppException {
+        if (strTableName == null || strColName == null || strIndexName == null) {
+            throw new DBAppException("Null arguments");
+        }
+
         // Load the table from the disk
         Table table = Table.loadTable(strTableName);
 
@@ -140,9 +143,9 @@ public class DBApp {
         // Iterate over all the records in the table
         for (int i = 0; i < table.pagesCount(); i++) {
             Page page = table.getPage(i);
-            for (Hashtable<String, Object> record : page.getRecords()) {
+            for (Record record : page.getRecords()) {
                 // Insert the value of the column and the record's key into the B+ tree
-                bpt.insert((Comparable) record.get(strColName), i);
+                bpt.insert((Comparable) record.hashtable().get(strColName), i);
             }
         }
         System.out.println("DONE INSERTING");
@@ -197,21 +200,19 @@ public class DBApp {
         for (int currentPageNo = pageNo; currentPageNo <= currentTable.pagesCount(); currentPageNo++) {
             if (currentPageNo < currentTable.pagesCount()) {
                 Page page = currentTable.getPage(currentPageNo);
-                if (!page.isFull()) {
-                    currentTable.addRecord(recordNo + 1, htblColNameValue, pKey, page);
-                    Util.updateIndexes(strTableName, currentPageNo, recordNo + 1, metaData);
-                    break;
+                currentTable.addRecord(recordNo + 1, new Record(htblColNameValue), pKey, page);
+                Util.updateIndexes(strTableName, currentPageNo, recordNo + 1, metaData);
+                if (page.size() == page.getMax() + 1) {
+                    Util.deleteIndexes(strTableName, currentPageNo, page.getMax(), metaData);
+                    htblColNameValue = currentTable.removeRecord(page.getMax(), pKey, page).hashtable();
+                    recordNo = -1;
                 } else {
-                    currentTable.addRecord(recordNo, htblColNameValue, pKey, page);
-                    Util.updateIndexes(strTableName, currentPageNo, recordNo, metaData);
-                    htblColNameValue = currentTable.removeRecord(currentTable.getPage(currentPageNo).getMax() - 1, pKey, page);
-                    Util.deleteIndexes(strTableName, currentPageNo, currentTable.getPage(currentPageNo).getMax() - 1, metaData);
-                    recordNo = 0;
+                    break;
                 }
             } else {
                 Page newPage = currentTable.addPage(Integer.parseInt((String) DBApp.getDbConfig().get("MaximumRowsCountinPage")));
-                currentTable.addRecord(htblColNameValue, pKey, newPage);
-                Util.updateIndexes(strTableName, pageNo, recordNo, metaData);
+                currentTable.addRecord(new Record(htblColNameValue), pKey, newPage);
+                Util.updateIndexes(strTableName, currentPageNo, recordNo + 1, metaData);
                 break;
             }
         }
@@ -258,11 +259,11 @@ public class DBApp {
             }
 
             Page page = table.getPage(info[0]);
-            Vector<Hashtable<String, Object>> records = page.getRecords();
-            Hashtable<String, Object> record = records.get(info[1]);
-            record.forEach((key, value) -> {
+            Vector<Record> records = page.getRecords();
+            Record record = records.get(info[1]);
+            record.hashtable().forEach((key, value) -> {
                 if (htblColNameValue.containsKey(key)) {
-                    record.put(key, htblColNameValue.get(key));
+                    record.hashtable().put(key, htblColNameValue.get(key));
                 }
             });
             records.set(info[1], record);
@@ -319,7 +320,7 @@ public class DBApp {
             //iterate over the records in the page
             for (int j = 0; j < page.getRecords().size(); j++) {
                 // get the record
-                Hashtable<String, Object> record = page.getRecords().get(j);
+                Record record = page.getRecords().get(j);
                 boolean delete = true;
                 //key-set is the columns in the record
                 //loop over the columns in the record
@@ -327,8 +328,7 @@ public class DBApp {
                     //if the record does not have the column or the value is not equal to the value in the condition
                     //get() gets the value of the column
 
-
-                    if (!record.get(colName).equals(htblColNameValue.get(colName))) {
+                    if (!record.hashtable().get(colName).equals(htblColNameValue.get(colName))) {
                         delete = false;
                         break;
                     }
@@ -398,11 +398,11 @@ public class DBApp {
             Page page = table.getPage(pages[i]); // load the page from disk
 
             for (int j = 0; j < page.getRecords().size(); j++) {
-                Hashtable<String, Object> record = page.getRecords().get(j);
+                Record record = page.getRecords().get(j);
                 boolean delete = true;
                 for (String col : htblColNameValue.keySet()) {
 
-                    if (!record.get(col).equals(htblColNameValue.get(col))) {
+                    if (!record.hashtable().get(col).equals(htblColNameValue.get(col))) {
                         delete = false;
                         break;
                     }
@@ -428,77 +428,17 @@ public class DBApp {
         table.updateTable(); // serialize the table
     }
 
-
-    // Following method returns a set of the pages of the select query using any index
-    private HashSet<Integer> filterPagesByIndex(
-            SQLTerm[] arrSQLTerms,
-            String[] strarrOperators) throws DBAppException {
-
-        HashSet<Integer> result = new HashSet<>();
-        String tableName = arrSQLTerms[0]._strTableName;
-
-        Hashtable<String, Hashtable<String, String[]>> metaData = Util.getMetadata(tableName);
-        LinkedList<String> indexColumns = Util.getIndexColumns(metaData, tableName);
-
-        for (String col : indexColumns) {
-            String indexName = metaData.get(tableName).get(col)[2];
-            DBBTree index = DBBTree.loadIndex(tableName, indexName);
-            HashSet<Integer> res = new HashSet<>();
-            // only consider filtering using the index if the condition is anded
-            for (int i = 0; i < arrSQLTerms.length; i++) {
-                SQLTerm term = arrSQLTerms[i];
-                String before = i == 0 ? null : strarrOperators[i - 1];
-                String after = i == arrSQLTerms.length - 1 ? null : strarrOperators[i];
-
-                if (term._strColumnName.equals(col)
-                        && ((before != null && before.equals("AND"))
-                        || (after != null && after.equals("AND")))) {
-
-                    Object value = term._objValue;
-                    HashMap<Integer, Integer> search = index.search((Comparable) value);
-                    if (search != null) {
-                        res.addAll(search.keySet());
-                    }
-                }
-            }
-
-            result.addAll(res);
-        }
-
-        return result;
-    }
-
-    private void selectFromTableHelper(SQLTerm[] arrSQLTerms, String[] strarrOperators,
-                                       Hashtable<String, Object> record, LinkedList<Hashtable<String, Object>> result) {
-
-        if (arrSQLTerms.length == 1) {
-            SQLTerm term = arrSQLTerms[0];
-            Object value = record.get(term._strColumnName);
-            if (Util.evaluateSqlTerm((Comparable) value, term._strOperator, (Comparable) term._objValue)) {
-                result.add(record);
-            }
-
-            return;
-        }
-
-        LinkedList<Object> postfix = Util.toPostfix(record, arrSQLTerms, strarrOperators);
-        boolean res = Util.evaluatePostfix(postfix);
-        if (res) {
-            result.add(record);
-        }
-    }
-
-
     // select * from student where name = "John Noor" OR gpa = 1.5 AND id = 2343432;
-    public Iterator selectFromTable(@NotNull SQLTerm[] arrSQLTerms,
-                                    @NotNull String[] strarrOperators) throws DBAppException {
+    public Iterator selectFromTable(SQLTerm[] arrSQLTerms,
+                                    String[] strarrOperators) throws DBAppException {
 
-        if (arrSQLTerms.length == 0) {
-            throw new DBAppException("No SQL terms provided");
+        if (arrSQLTerms == null || strarrOperators == null) {
+            throw new DBAppException("Null arguments");
         }
 
-        if (arrSQLTerms.length != strarrOperators.length + 1) {
-            throw new DBAppException("Invalid number of operators");
+        if (arrSQLTerms.length == 0 || strarrOperators.length == 0
+                || arrSQLTerms.length != strarrOperators.length + 1) {
+            throw new DBAppException("Invalid arguments");
         }
 
         String tableName = arrSQLTerms[0]._strTableName;
@@ -517,17 +457,45 @@ public class DBApp {
             Util.validateTypes(tableName, new Hashtable<>(Map.of(term._strColumnName, term._objValue)));
         }
 
-        HashSet<Integer> filteredPages = filterPagesByIndex(arrSQLTerms, strarrOperators);
-        LinkedList<Hashtable<String, Object>> result = new LinkedList<>();
+        Table table = Table.loadTable(tableName);
+        HashSet<Integer> filteredPages = Util.filterPagesByIndex(arrSQLTerms, strarrOperators, table.pagesCount());
+        LinkedList<Record> result = new LinkedList<>();
 
-        for (Page p : Table.loadTable(tableName)) {
-            for (Hashtable<String, Object> record : p.getRecords()) {
+        for (Integer i : filteredPages) {
+            for (Record record : table.getPage(i).getRecords()) {
                 selectFromTableHelper(arrSQLTerms, strarrOperators, record, result);
             }
         }
+        if (!filteredPages.isEmpty()) {
+            return result.iterator();
+        }
 
-
+        for (Page p : table) {
+            for (Record record : p.getRecords()) {
+                selectFromTableHelper(arrSQLTerms, strarrOperators, record, result);
+            }
+        }
         return result.iterator();
+    }
+
+    private void selectFromTableHelper(SQLTerm[] arrSQLTerms, String[] strarrOperators,
+                                       Record record, LinkedList<Record> result) {
+
+        if (arrSQLTerms.length == 1) {
+            SQLTerm term = arrSQLTerms[0];
+            Object value = record.hashtable().get(term._strColumnName);
+            if (Util.evaluateSqlTerm((Comparable) value, term._strOperator, (Comparable) term._objValue)) {
+                result.add(record);
+            }
+
+            return;
+        }
+
+        LinkedList<Object> postfix = Util.toPostfix(record.hashtable(), arrSQLTerms, strarrOperators);
+        boolean res = Util.evaluatePostfix(postfix);
+        if (res) {
+            result.add(record);
+        }
     }
 
     public static Properties getDbConfig() {
@@ -539,7 +507,6 @@ public class DBApp {
     }
 
     public static void test() {
-
         try {
             String strTableName = "Student";
             DBApp dbApp = new DBApp();
@@ -606,5 +573,4 @@ public class DBApp {
     public static void main(String[] args) {
         DBApp.test();
     }
-
 }
