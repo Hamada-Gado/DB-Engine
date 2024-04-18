@@ -276,6 +276,7 @@ public class DBApp {
         if (htblColNameValue != null && htblColNameValue.isEmpty()) {
             throw new DBAppException("Delete condition cannot be empty.");
         }
+        Util.validateTypes(strTableName, htblColNameValue);
 
         // 2. Load the table & check if it exists
         Table table = Table.loadTable(strTableName);
