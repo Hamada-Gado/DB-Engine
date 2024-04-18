@@ -286,7 +286,7 @@ public class Util {
     // Following method returns a set of the pages of the select query using any index
     public static HashSet<Integer> filterPagesByIndex(
             SQLTerm[] arrSQLTerms,
-            String[] strarrOperators) throws DBAppException {
+            String[] strarrOperators, int pagesCount) throws DBAppException {
 
         HashSet<Integer> result = new HashSet<>();
         String tableName = arrSQLTerms[0]._strTableName;
@@ -300,19 +300,35 @@ public class Util {
             HashSet<Integer> res = new HashSet<>();
             // only consider filtering using the index if the condition is anded
             for (int i = 0; i < arrSQLTerms.length; i++) {
+                if (!col.equals(arrSQLTerms[i]._strColumnName)) {
+                    continue;
+                }
+
                 SQLTerm term = arrSQLTerms[i];
                 String before = i == 0 ? null : strarrOperators[i - 1];
                 String after = i == arrSQLTerms.length - 1 ? null : strarrOperators[i];
 
-                if (term._strColumnName.equals(col)
-                        && ((before != null && before.equals("AND"))
-                        || (after != null && after.equals("AND")))) {
+                if ((before == null || !before.equals("AND"))
+                        && (after == null || !after.equals("AND"))) {
+                    continue;
+                }
 
-                    Object value = term._objValue;
-                    HashMap<Integer, Integer> search = index.search((Comparable) value);
-                    if (search != null) {
-                        res.addAll(search.keySet());
+                Object value = term._objValue;
+                Set<Integer> search = null;
+
+                switch (term._strOperator) {
+                    case "=" -> search = index.search((Comparable) value).keySet();
+                    case "!=" -> {
+                        for (int j = 0; j < pagesCount; j++) res.add(j);
+                        res.removeAll(index.search((Comparable) value).keySet());
                     }
+                    case ">", ">=" -> search = index.searchRange((Comparable) value, null);
+                    case "<", "<=" -> search = index.searchRange(null, (Comparable) value);
+                    default -> throw new DBAppException("Invalid operator");
+                }
+
+                if (search != null) {
+                    res.addAll(search);
                 }
             }
 
