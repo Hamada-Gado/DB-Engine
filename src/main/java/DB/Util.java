@@ -353,8 +353,8 @@ public class Util {
         return indexColumns;
     }
 
-    public static void updateIndexes(String tableName, int pageNo, int recordNo,
-                                     Hashtable<String, Hashtable<String, String[]>> metadata) throws DBAppException {
+    public static void updateIndexes(String tableName, int pageNo, int recordNo) throws DBAppException {
+        Hashtable<String, Hashtable<String, String[]>> metadata = Util.getMetadata(tableName);
         LinkedList<String> indexColumns = Util.getIndexColumns(metadata, tableName);
         Table table = Table.loadTable(tableName);
         Hashtable record = table.getPage(pageNo).getRecords().get(recordNo).hashtable();
@@ -370,8 +370,8 @@ public class Util {
         }
     }
 
-    public static void deleteIndexes(String tableName, int pageNo, int recordNo,
-                                     Hashtable<String, Hashtable<String, String[]>> metadata) throws DBAppException {
+    public static void deleteIndexes(String tableName, int pageNo, int recordNo) throws DBAppException {
+        Hashtable<String, Hashtable<String, String[]>> metadata = Util.getMetadata(tableName);
         LinkedList<String> indexColumns = Util.getIndexColumns(metadata, tableName);
         Table table = Table.loadTable(tableName);
         Hashtable record = table.getPage(pageNo).getRecords().get(recordNo).hashtable();
@@ -383,6 +383,19 @@ public class Util {
                 if (record.get(colName) == null) continue;
                 DBBTree tree = DBBTree.loadIndex(tableName, indexName);
                 tree.delete((Comparable) record.get(colName), pageNo);
+            }
+        }
+    }
+
+    public static void recreateIndexes(String tableName, DBApp dbApp) throws DBAppException {
+        Hashtable<String, Hashtable<String, String[]>> metadata = Util.getMetadata(tableName);
+        LinkedList<String> indexColumns = Util.getIndexColumns(metadata, tableName);
+
+        for (String colName : indexColumns) {
+            String indexName = metadata.get(tableName).get(colName)[2];
+            String indexType = metadata.get(tableName).get(colName)[3];
+            if (indexType.equals("B+tree")) {
+                dbApp.createIndex(tableName, colName, indexName);
             }
         }
     }

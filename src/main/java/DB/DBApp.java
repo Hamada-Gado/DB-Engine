@@ -194,9 +194,9 @@ public class DBApp {
             if (currentPageNo < currentTable.pagesCount()) {
                 Page page = currentTable.getPage(currentPageNo);
                 currentTable.addRecord(recordNo + 1, new Record(htblColNameValue), pKey, page);
-                Util.updateIndexes(strTableName, currentPageNo, recordNo + 1, metaData);
+                Util.updateIndexes(strTableName, currentPageNo, recordNo + 1);
                 if (page.size() == page.getMax() + 1) {
-                    Util.deleteIndexes(strTableName, currentPageNo, page.getMax(), metaData);
+                    Util.deleteIndexes(strTableName, currentPageNo, page.getMax());
                     htblColNameValue = currentTable.removeRecord(page.getMax(), pKey, page).hashtable();
                     recordNo = -1;
                 } else {
@@ -205,7 +205,7 @@ public class DBApp {
             } else {
                 Page newPage = currentTable.addPage(Integer.parseInt((String) DBApp.getDbConfig().get("MaximumRowsCountinPage")));
                 currentTable.addRecord(new Record(htblColNameValue), pKey, newPage);
-                Util.updateIndexes(strTableName, currentPageNo, recordNo + 1, metaData);
+                Util.updateIndexes(strTableName, currentPageNo, recordNo + 1);
                 break;
             }
         }
@@ -269,77 +269,96 @@ public class DBApp {
     // htblColNameValue holds the key and value. This will be used in search
     // to identify which rows/tuples to delete.
     // htblColNameValue enteries are ANDED together
-
-
     public void deleteFromTable(String strTableName,
                                 Hashtable<String, Object> htblColNameValue) throws DBAppException {
 
         // 1. Validate the delete condition
-        if (htblColNameValue.isEmpty()) {
+        if (htblColNameValue != null && htblColNameValue.isEmpty()) {
             throw new DBAppException("Delete condition cannot be empty.");
         }
 
         // 2. Load the table & check if it exists
         Table table = Table.loadTable(strTableName);
 
-
         // 3. check if there is an index on the table
         Hashtable<String, Hashtable<String, String[]>> metaData = Util.getMetadata(strTableName);
 
         String pKey = metaData.get(strTableName).get("clusteringKey")[0];
+        Object clusteringValue = htblColNameValue.get(pKey);
 
+        // if the clustering key is in the delete condition just use binary search and delete
+        if (clusteringValue != null) {
+            int[] recordPos = Util.getRecordPos(strTableName, pKey, (Comparable) clusteringValue);
+            if (recordPos[2] == 1) {
+                Page page = table.getPage(recordPos[0]);
+                Record record = page.getRecords().get(recordPos[1]);
 
-        LinkedList<String> indexColumns = new LinkedList<>();
-        //loop over metaData file and check if the index exists
-        for (String colName : metaData.get(strTableName).keySet()) {
-            // check if index name is not null in meta-data file
-            if (colName.equals("clusteringKey")) {
-                continue;
+                for (String colName : htblColNameValue.keySet()) {
+                    if (!record.hashtable().get(colName).equals(htblColNameValue.get(colName))) {
+                        return;
+                    }
+                }
+
+                table.removeRecord(recordPos[1], pKey, page);
+                Util.deleteIndexes(strTableName, recordPos[0], recordPos[1]);
+                if (page.isEmpty()) {
+                    table.removePage(page);
+                    Util.recreateIndexes(strTableName, this);
+                } else {
+                    page.updatePage();
+                }
+                table.updateTable();
             }
-            if (!metaData.get(strTableName).get(colName)[2].equals("null")) {
-                indexColumns.add(colName);
-            }
+            return;
         }
 
-        if (!indexColumns.isEmpty()) {
+        // indexCol = {"name", "gpa"}, htblColNameValue.keySet = {"name"} --> helper
+        // indexCol = {"gpa"}, htblColNameValue.keySet = {"name"} --> no helper
+        // indexCol = {"name"}, htblColNameValue.keySet = {"name"} --> helper
+        // indexCol = {}, htblColNameValue.keySet = {"name"} --> no helper
+        LinkedList<String> indexColumns = Util.getIndexColumns(metaData, strTableName);
+
+        // this is wrong
+        if (!indexColumns.isEmpty() && indexColumns.containsAll(htblColNameValue.keySet())) {
             //if there is an index
             deleteFromTableHelper(strTableName, htblColNameValue, indexColumns, table, metaData);
             return;
         }
 
-        for (int i = 0; i < table.pagesCount(); i++) {
-            //load page from disk
-            Page page = table.getPage(i);
+        int pageIndex = -1;
+        for (Page page : table.clone()) {
+            pageIndex++;
+            Vector<Record> newRecords = new Vector<>();
+
+            int recordIndex = -1;
             //iterate over the records in the page
-            for (int j = 0; j < page.getRecords().size(); j++) {
-                // get the record
-                Record record = page.getRecords().get(j);
+            for (Record record : page.getRecords()) {
+                recordIndex++;
                 boolean delete = true;
                 //key-set is the columns in the record
                 //loop over the columns in the record
                 for (String colName : htblColNameValue.keySet()) {
                     //if the record does not have the column or the value is not equal to the value in the condition
                     //get() gets the value of the column
-
                     if (!record.hashtable().get(colName).equals(htblColNameValue.get(colName))) {
                         delete = false;
                         break;
                     }
                 }
-                if (delete) {
-                    //remove the record
-                    table.removeRecord(j, pKey, page);
-
-                    //if the page is empty, remove it
-                    if (page.isEmpty()) {
-                        table.getPagesPath().remove(i);
-                    } else {
-                        page.updatePage(); //serialize the page
-                    }
+                if (!delete) {
+                    newRecords.add(record);
                 }
+            }
+            page.setRecords(newRecords);
+            //if the page is empty, remove it
+            if (page.isEmpty()) {
+                table.removePage(page);
+            } else {
+                page.updatePage(); //serialize the page
             }
         }
         table.updateTable(); //serialize the table
+        Util.recreateIndexes(strTableName, this);
     }
 
 
@@ -401,7 +420,7 @@ public class DBApp {
                     }
                 }
                 //delete from index
-                Util.deleteIndexes(strTableName, pages[i], j, metaData);
+                Util.deleteIndexes(strTableName, pages[i], j);
                 if (delete) {
                     System.out.println("DELETING");
                     table.removeRecord(j, pKey, page);

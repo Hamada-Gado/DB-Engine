@@ -61,6 +61,14 @@ public class Page implements Serializable {
         return records;
     }
 
+    public void setRecords(Vector<Record> records) {
+        this.records = records;
+    }
+
+    public Path getPath() {
+        return Paths.get((String) DBApp.getDbConfig().get("DataPath"), tableName, pageNumber + ".ser");
+    }
+
     public void add(Record record) {
         records.add(record);
         updatePage();
