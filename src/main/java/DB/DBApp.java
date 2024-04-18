@@ -441,9 +441,9 @@ public class DBApp {
             Util.validateTypes(tableName, new Hashtable<>(Map.of(term._strColumnName, term._objValue)));
         }
 
-        HashSet<Integer> filteredPages = Util.filterPagesByIndex(arrSQLTerms, strarrOperators);
-        LinkedList<Record> result = new LinkedList<>();
         Table table = Table.loadTable(tableName);
+        HashSet<Integer> filteredPages = Util.filterPagesByIndex(arrSQLTerms, strarrOperators, table.pagesCount());
+        LinkedList<Record> result = new LinkedList<>();
 
         for (Integer i : filteredPages) {
             for (Record record : table.getPage(i).getRecords()) {

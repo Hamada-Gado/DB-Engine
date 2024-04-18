@@ -2,6 +2,7 @@ package BTree;
 
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.LinkedList;
 
 /**
  * A B+ tree Since the structures and behaviors between internal node and
@@ -16,7 +17,7 @@ public class BTree<TKey extends Comparable<TKey>, TValue> implements Serializabl
      * @uml.property name="root"
      * @uml.associationEnd multiplicity="(1 1)"
      */
-    private BTreeNode<TKey> root;
+    protected BTreeNode<TKey> root;
     /**
      * @uml.property name="tableName"
      */
@@ -38,6 +39,37 @@ public class BTree<TKey extends Comparable<TKey>, TValue> implements Serializabl
             if (n != null)
                 this.root = n;
         }
+    }
+
+    public LinkedList<TValue> search(TKey lowerBound, TKey upperBound) {
+        LinkedList<TValue> res = new LinkedList<>();
+        BTreeLeafNode<TKey, TValue> leaf;
+        int index = 0;
+        if (lowerBound == null) {
+            leaf = this.root.getSmallest();
+        } else {
+            leaf = this.findLeafNodeShouldContainKey(lowerBound);
+            index = leaf.search(lowerBound);
+        }
+
+        if (index == -1) {
+            index = 0;
+        }
+
+        while (leaf != null) {
+            for (int i = index; i < leaf.getKeyCount(); i++) {
+                if (upperBound != null && leaf.getKey(i).compareTo(upperBound) > 0)
+                    return res;
+                else if (lowerBound == null)
+                    res.add(leaf.getValue(i));
+                else if (leaf.getKey(i).compareTo(lowerBound) >= 0)
+                    res.add(leaf.getValue(i));
+            }
+            leaf = (BTreeLeafNode<TKey, TValue>) leaf.getRightSibling();
+            index = 0;
+        }
+
+        return res;
     }
 
     /**
@@ -67,7 +99,7 @@ public class BTree<TKey extends Comparable<TKey>, TValue> implements Serializabl
      * Search the leaf node which should contain the specified key
      */
     @SuppressWarnings("unchecked")
-    private BTreeLeafNode<TKey, TValue> findLeafNodeShouldContainKey(TKey key) {
+    protected BTreeLeafNode<TKey, TValue> findLeafNodeShouldContainKey(TKey key) {
         BTreeNode<TKey> node = this.root;
         while (node.getNodeType() == TreeNodeType.InnerNode) {
             node = ((BTreeInnerNode<TKey>) node).getChild(node.search(key));
