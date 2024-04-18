@@ -449,22 +449,22 @@ class Test {
         bTree.insert("A", 1);
         bTree.insert("B", 2);
         bTree.insert("C", 3);
-        bTree.insert("D", 4);
-        bTree.insert("E", 5);
+        bTree.insert("E", 4);
+        bTree.insert("F", 5);
 //        bTree.print();
 
-        LinkedList<Integer> result = bTree.search("B", "D");
+        LinkedList<Integer> result = bTree.search("B", "E");
         assertEquals(3, result.size());
         assertEquals(2, result.get(0));
         assertEquals(3, result.get(1));
         assertEquals(4, result.get(2));
 
-        result = bTree.search("D", null);
+        result = bTree.search("E", null);
         assertEquals(2, result.size());
         assertEquals(4, result.get(0));
         assertEquals(5, result.get(1));
 
-        result = bTree.search(null, "C");
+        result = bTree.search(null, "D");
         assertEquals(3, result.size());
         assertEquals(1, result.get(0));
         assertEquals(2, result.get(1));
@@ -489,29 +489,28 @@ class Test {
         bTree.insert("A", 1);
         bTree.insert("B", 2);
         bTree.insert("B", 2);
-        bTree.insert("C", 3);
-        bTree.insert("D", 2);
-        bTree.insert("D", 4);
-        bTree.insert("E", 5);
+        bTree.insert("D", 3);
+        bTree.insert("E", 2);
+        bTree.insert("E", 4);
+        bTree.insert("F", 5);
 //        bTree.print();
 
         HashSet<Integer> result = bTree.searchRange("B", "D");
-        assertEquals(3, result.size());
+        assertEquals(2, result.size());
         assertTrue(result.contains(2));
         assertTrue(result.contains(3));
-        assertTrue(result.contains(4));
 
-        result = bTree.searchRange("D", null);
-        assertEquals(3, result.size());
+        result = bTree.searchRange("C", null);
+        assertEquals(4, result.size());
+        assertTrue(result.contains(2));
+        assertTrue(result.contains(3));
         assertTrue(result.contains(4));
         assertTrue(result.contains(5));
-        assertTrue(result.contains(2));
 
         result = bTree.searchRange(null, "C");
-        assertEquals(3, result.size());
+        assertEquals(2, result.size());
         assertTrue(result.contains(1));
         assertTrue(result.contains(2));
-        assertTrue(result.contains(3));
 
         result = bTree.searchRange(null, null);
         assertEquals(5, result.size());

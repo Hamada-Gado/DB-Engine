@@ -317,11 +317,9 @@ public class Util {
                 Set<Integer> search = null;
 
                 switch (term._strOperator) {
-                    case "=" -> search = index.search((Comparable) value).keySet();
                     case "!=" -> {
-                        for (int j = 0; j < pagesCount; j++) res.add(j);
-                        res.removeAll(index.search((Comparable) value).keySet());
                     }
+                    case "=" -> search = index.search((Comparable) value).keySet();
                     case ">", ">=" -> search = index.searchRange((Comparable) value, null);
                     case "<", "<=" -> search = index.searchRange(null, (Comparable) value);
                     default -> throw new DBAppException("Invalid operator");
