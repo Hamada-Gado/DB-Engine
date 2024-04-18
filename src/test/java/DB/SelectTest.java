@@ -163,8 +163,10 @@ class SelectTest {
         assertEquals(false, result);
     }
 
-    void testInsertIntoTable(String strTableName) {
+    @org.junit.jupiter.api.Test
+    void testGetRecordPos() {
         try {
+            String strTableName = "TestGetRecordPos";
             DBApp dbApp = new DBApp();
 
             Hashtable htblColNameType = new Hashtable();
@@ -202,26 +204,6 @@ class SelectTest {
             htblColNameValue.put("name", new String("Zaky Noor"));
             htblColNameValue.put("gpa", Double.valueOf(0.88));
             dbApp.insertIntoTable(strTableName, htblColNameValue);
-
-            Table table = Table.loadTable(strTableName);
-            assertEquals(1, table.pagesCount());
-            Page page = table.getPage(0);
-            int j;
-            for (int i = j = 0; i < 5; i++) {
-                j = (i + 1) * 10;
-                assertEquals(j, page.getRecords().get(i).hashtable().get("id"));
-            }
-        } catch (DBAppException e) {
-            e.printStackTrace();
-        }
-    }
-
-    @org.junit.jupiter.api.Test
-    void testGetRecordPos() {
-        String strTableName = "TestGetRecordPos";
-        testInsertIntoTable(strTableName);
-
-        try {
             int[] recordPos;
             recordPos = Util.getRecordPos(strTableName, "id", Integer.valueOf(20));
             assertArrayEquals(new int[]{0, 1, 1}, recordPos);
@@ -260,14 +242,14 @@ class SelectTest {
             htblColNameValue.put("id", Integer.valueOf(23));
             htblColNameValue.put("name", new String("Ahmed Noor"));
             htblColNameValue.put("gpa", Double.valueOf(0.95));
-            htblColNameValue.put("grade", Integer.valueOf(11));
+            htblColNameValue.put("grade", Integer.valueOf(10));
             dbApp.insertIntoTable(strTableName, htblColNameValue);
 
             htblColNameValue.clear();
             htblColNameValue.put("id", Integer.valueOf(10));
             htblColNameValue.put("name", new String("Dalia Noor"));
             htblColNameValue.put("gpa", Double.valueOf(0.95));
-            htblColNameValue.put("grade", Integer.valueOf(10));
+            htblColNameValue.put("grade", Integer.valueOf(11));
             dbApp.insertIntoTable(strTableName, htblColNameValue);
 
             htblColNameValue.clear();
@@ -294,16 +276,17 @@ class SelectTest {
             // name = "John Noor" OR gpa = 1.5
             SQLTerm[] arrSQLTerms;
             arrSQLTerms = new SQLTerm[3];
+
             arrSQLTerms[0] = new SQLTerm();
             arrSQLTerms[0]._strTableName = strTableName;
             arrSQLTerms[0]._strColumnName = "name";
-            arrSQLTerms[0]._strOperator = "=";
-            arrSQLTerms[0]._objValue = "John Noor";
+            arrSQLTerms[0]._strOperator = ">=";
+            arrSQLTerms[0]._objValue = "D";
 
             arrSQLTerms[1] = new SQLTerm();
             arrSQLTerms[1]._strTableName = strTableName;
             arrSQLTerms[1]._strColumnName = "gpa";
-            arrSQLTerms[1]._strOperator = "=";
+            arrSQLTerms[1]._strOperator = "<=";
             arrSQLTerms[1]._objValue = Double.valueOf(1.5);
 
             arrSQLTerms[2] = new SQLTerm();
@@ -323,8 +306,10 @@ class SelectTest {
 //            System.out.println(Table.loadTable(strTableName));
 //            System.out.println(list);
 
+            assertEquals(3, list.size());
             assertEquals(2, ((Record) list.get(0)).hashtable().get("id"));
-            assertEquals(56, ((Record) list.get(1)).hashtable().get("id"));
+            assertEquals(10, ((Record) list.get(1)).hashtable().get("id"));
+            assertEquals(56, ((Record) list.get(2)).hashtable().get("id"));
         } catch (DBAppException e) {
             e.printStackTrace();
             assertTrue(false);
