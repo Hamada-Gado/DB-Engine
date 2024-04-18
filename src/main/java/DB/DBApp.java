@@ -244,6 +244,9 @@ public class DBApp {
         else{
             clusteringKeyValue = strClusteringKeyValue;
         }
+        String pKey = metaData.get(strTableName).get("clusteringKey")[0];
+        int[] info = Util.getRecordPos(strTableName,pKey, (Comparable) clusteringKeyValue);
+        Util.deleteIndexes(strTableName, info[0], info[1]);
         for (String colName : htblColNameValue.keySet()) {
 
             String colType = metaData.get(strTableName).get(colName)[0];
@@ -258,8 +261,7 @@ public class DBApp {
                 throw new DBAppException("Mismatching dataTypes");
 
 
-            String pKey = metaData.get(strTableName).get("clusteringKey")[0];
-            int[] info = Util.getRecordPos(strTableName,pKey, (Comparable) clusteringKeyValue);
+
             if (info[2] == 0) {
                 throw new DBAppException("Key Not found");
             }
@@ -277,8 +279,8 @@ public class DBApp {
         }
 
         // Update the index
-        String pKey = metaData.get(strTableName).get("clusteringKey")[0];
-        int[] info = Util.getRecordPos(strTableName,pKey, (Comparable) clusteringKeyValue);
+
+
         Util.updateIndexes(strTableName, info[0], info[1]);
         // Iterate over each column in the metadata
 //        int count = 0;
@@ -293,7 +295,8 @@ public class DBApp {
 //                DBBTree index = DBBTree.loadIndex(strTableName, indexName);
 //
 //                // Update the index
-//
+//                String pKey = metaData.get(strTableName).get("clusteringKey")[0];
+//                int[] info = Util.getRecordPos(strTableName,pKey, (Comparable) clusteringKeyValue);
 //                if (info[2] == 0) {
 //                    throw new DBAppException("Key Not found");
 //                }
