@@ -312,88 +312,47 @@ public class DBApp {
             return;
         }
 
-        // indexCol = {"name", "gpa"}, htblColNameValue.keySet = {"name"} --> helper
-        // indexCol = {"gpa"}, htblColNameValue.keySet = {"name"} --> no helper
-        // indexCol = {"name"}, htblColNameValue.keySet = {"name"} --> helper
-        // indexCol = {}, htblColNameValue.keySet = {"name"} --> no helper
         LinkedList<String> indexColumns = Util.getIndexColumns(metaData, strTableName);
+        HashSet<String> indexColumsSet = new HashSet<>(indexColumns);
+        indexColumsSet.retainAll(htblColNameValue.keySet());
 
-        // this is wrong
-        if (!indexColumns.isEmpty() && indexColumns.containsAll(htblColNameValue.keySet())) {
+        if (!indexColumns.isEmpty() && !indexColumsSet.isEmpty()) {
             //if there is an index
-            deleteFromTableHelper(strTableName, htblColNameValue, indexColumns, table, metaData);
+            deleteFromTableWithIndex(strTableName, htblColNameValue, indexColumns, table, metaData);
             return;
         }
 
-        int pageIndex = -1;
         for (Page page : table.clone()) {
-            pageIndex++;
-            Vector<Record> newRecords = new Vector<>();
-
-            int recordIndex = -1;
-            //iterate over the records in the page
-            for (Record record : page.getRecords()) {
-                recordIndex++;
-                boolean delete = true;
-                //key-set is the columns in the record
-                //loop over the columns in the record
-                for (String colName : htblColNameValue.keySet()) {
-                    //if the record does not have the column or the value is not equal to the value in the condition
-                    //get() gets the value of the column
-                    if (!record.hashtable().get(colName).equals(htblColNameValue.get(colName))) {
-                        delete = false;
-                        break;
-                    }
-                }
-                if (!delete) {
-                    newRecords.add(record);
-                }
-            }
-            page.setRecords(newRecords);
-            //if the page is empty, remove it
-            if (page.isEmpty()) {
-                table.removePage(page);
-            } else {
-                page.updatePage(); //serialize the page
-            }
+            deleteFromTableHelper(page, htblColNameValue, table);
         }
+
         table.updateTable(); //serialize the table
         Util.recreateIndexes(strTableName, this);
     }
 
 
-    private void deleteFromTableHelper(String strTableName,
-                                       Hashtable<String, Object> htblColNameValue,
-                                       LinkedList<String> indexColumns,
-                                       Table table,
-                                       Hashtable<String, Hashtable<String, String[]>> metaData) throws DBAppException {
-
+    private void deleteFromTableWithIndex(String strTableName,
+                                          Hashtable<String, Object> htblColNameValue,
+                                          LinkedList<String> indexColumns,
+                                          Table table,
+                                          Hashtable<String, Hashtable<String, String[]>> metaData) throws DBAppException {
         // Set to store the result
         HashSet<Integer> result = new HashSet<>();
-
-        // Get the clustering key
-        String pKey = metaData.get(strTableName).get("clusteringKey")[0];
 
         for (String colName : indexColumns) {
             String indexName = metaData.get(strTableName).get(colName)[2];
 
             // 2. Load the index
             DBBTree BPlusTree = DBBTree.loadIndex(strTableName, indexName);
-            System.out.println(BPlusTree);
-
             HashSet<Integer> res = new HashSet<>();
-
-
             Object value = htblColNameValue.get(colName);
 
             if (value == null) continue;
             //search in the index for the value
             HashMap<Integer, Integer> search = BPlusTree.search((Comparable) value);
-            System.out.println(search);
             if (search != null) {
                 res.addAll(search.keySet());
             }
-            System.out.println(res);
 
             if (result.isEmpty()) {
                 result.addAll(res);
@@ -401,43 +360,46 @@ public class DBApp {
                 result.retainAll(res);
             }
         }
-        System.out.println(result);
 
         Integer[] pages = result.toArray(new Integer[result.size()]);
+        Table clonedTable = table.clone();
         // 5. Iterate over the pages to delete the records
-        for (int i = 0; i < pages.length; i++) {
-
-            Page page = table.getPage(pages[i]); // load the page from disk
-
-            for (int j = 0; j < page.getRecords().size(); j++) {
-                Record record = page.getRecords().get(j);
-                boolean delete = true;
-                for (String col : htblColNameValue.keySet()) {
-
-                    if (!record.hashtable().get(col).equals(htblColNameValue.get(col))) {
-                        delete = false;
-                        break;
-                    }
-                }
-                //delete from index
-                Util.deleteIndexes(strTableName, pages[i], j);
-                if (delete) {
-                    System.out.println("DELETING");
-                    table.removeRecord(j, pKey, page);
-                    System.out.println("DELETED");
-                    ; //remove the record
-                    if (page.isEmpty()) {
-                        table.getPagesPath().remove(pages[i]); //remove the page
-
-                    } else {
-                        page.updatePage(); //serialize the page
-                    }
-                }
-            }
-
+        for (Integer integer : pages) {
+            Page page = clonedTable.getPage(integer); // load the page from disk
+            deleteFromTableHelper(page, htblColNameValue, table);
         }
+
         // 6. Update table metadata (optional)
         table.updateTable(); // serialize the table
+        Util.recreateIndexes(strTableName, this);
+    }
+
+    private void deleteFromTableHelper(Page page, Hashtable<String, Object> htblColNameValue, Table table) {
+        Vector<Record> newRecords = new Vector<>();
+        //iterate over the records in the page
+        for (Record record : page.getRecords()) {
+            boolean delete = true;
+            //key-set is the columns in the record
+            //loop over the columns in the record
+            for (String colName : htblColNameValue.keySet()) {
+                //if the record does not have the column or the value is not equal to the value in the condition
+                //get() gets the value of the column
+                if (!record.hashtable().get(colName).equals(htblColNameValue.get(colName))) {
+                    delete = false;
+                    break;
+                }
+            }
+            if (!delete) {
+                newRecords.add(record);
+            }
+        }
+        page.setRecords(newRecords);
+        //if the page is empty, remove it
+        if (page.isEmpty()) {
+            table.removePage(page);
+        } else {
+            page.updatePage(); //serialize the page
+        }
     }
 
     // select * from student where name = "John Noor" OR gpa = 1.5 AND id = 2343432;
