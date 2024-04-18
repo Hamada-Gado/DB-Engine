@@ -1,7 +1,9 @@
 package DB;
 
+import BTree.BTree;
 import BTree.DBBTree;
 
+import java.io.File;
 import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -211,7 +213,7 @@ class Test {
             int j;
             for (int i = j = 0; i < 5; i++) {
                 j = (i + 1) * 10;
-                assertEquals(j, page.getRecords().get(i).get("id"));
+                assertEquals(j, page.getRecords().get(i).hashtable().get("id"));
             }
         } catch (DBAppException e) {
             e.printStackTrace();
@@ -311,8 +313,8 @@ class Test {
 //            System.out.println(Table.loadTable(strTableName));
 //            System.out.println(list);
 
-            assertEquals(2, ((Hashtable) list.get(0)).get("id"));
-            assertEquals(56, ((Hashtable) list.get(1)).get("id"));
+            assertEquals(2, ((Record) list.get(0)).hashtable().get("id"));
+            assertEquals(56, ((Record) list.get(1)).hashtable().get("id"));
         } catch (DBAppException e) {
             e.printStackTrace();
             assertTrue(false);
@@ -439,4 +441,82 @@ class Test {
             assertFalse(true);
         }
     }
+
+    @org.junit.jupiter.api.Test
+    void testRangeBTreeQuery() {
+        BTree<String, Integer> bTree = new BTree<String, Integer>();
+
+        bTree.insert("A", 1);
+        bTree.insert("B", 2);
+        bTree.insert("C", 3);
+        bTree.insert("E", 4);
+        bTree.insert("F", 5);
+//        bTree.print();
+
+        LinkedList<Integer> result = bTree.search("B", "E");
+        assertEquals(3, result.size());
+        assertEquals(2, result.get(0));
+        assertEquals(3, result.get(1));
+        assertEquals(4, result.get(2));
+
+        result = bTree.search("E", null);
+        assertEquals(2, result.size());
+        assertEquals(4, result.get(0));
+        assertEquals(5, result.get(1));
+
+        result = bTree.search(null, "D");
+        assertEquals(3, result.size());
+        assertEquals(1, result.get(0));
+        assertEquals(2, result.get(1));
+        assertEquals(3, result.get(2));
+
+        result = bTree.search(null, null);
+        assertEquals(5, result.size());
+        for (int i = 0; i < 5; i++) {
+            assertEquals(i + 1, result.get(i));
+        }
+    }
+
+    @org.junit.jupiter.api.Test
+    void testRangeDBBTreeQuery() {
+        String folderName = "src/main/resources/data/TestRangeDBBTreeQuery";
+        File folder = new File(folderName);
+        folder.mkdirs();
+
+        new DBApp();
+        DBBTree<String> bTree = new DBBTree<String>("TestRangeDBBTreeQuery", "TestRangeDBBTreeQuery");
+
+        bTree.insert("A", 1);
+        bTree.insert("B", 2);
+        bTree.insert("B", 2);
+        bTree.insert("D", 3);
+        bTree.insert("E", 2);
+        bTree.insert("E", 4);
+        bTree.insert("F", 5);
+//        bTree.print();
+
+        HashSet<Integer> result = bTree.searchRange("B", "D");
+        assertEquals(2, result.size());
+        assertTrue(result.contains(2));
+        assertTrue(result.contains(3));
+
+        result = bTree.searchRange("C", null);
+        assertEquals(4, result.size());
+        assertTrue(result.contains(2));
+        assertTrue(result.contains(3));
+        assertTrue(result.contains(4));
+        assertTrue(result.contains(5));
+
+        result = bTree.searchRange(null, "C");
+        assertEquals(2, result.size());
+        assertTrue(result.contains(1));
+        assertTrue(result.contains(2));
+
+        result = bTree.searchRange(null, null);
+        assertEquals(5, result.size());
+        for (int i = 0; i < 5; i++) {
+            assertTrue(result.contains(i + 1));
+        }
+    }
+
 }

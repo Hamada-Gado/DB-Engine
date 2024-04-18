@@ -7,6 +7,8 @@ import java.io.*;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedList;
 
 /**
  * The HashMap is of the form (page number, count of the value in the page)
@@ -33,6 +35,16 @@ public class DBBTree<TKey extends Comparable<TKey>> extends BTree<TKey, HashMap<
         return super.search(key);
     }
 
+    public HashSet<Integer> searchRange(TKey lowerBound, TKey upperBound) {
+        LinkedList<HashMap<Integer, Integer>> res = super.search(lowerBound, upperBound);
+        HashSet<Integer> set = new HashSet<>();
+        for (HashMap<Integer, Integer> map : res) {
+            set.addAll(map.keySet());
+        }
+
+        return set;
+    }
+
     public void insert(TKey key, Integer value) {
         HashMap<Integer, Integer> values = this.search(key);
         if (values == null) {
@@ -46,26 +58,6 @@ public class DBBTree<TKey extends Comparable<TKey>> extends BTree<TKey, HashMap<
 
         this.saveIndex();
     }
-
-
-// This is prob useless
-//    public void insert(TKey key, Integer value, int prevValue) {
-//        HashMap<Integer, Integer> values = this.search(key);
-//
-//        if (values == null) {
-//            this.insert(key, value);
-//            return;
-//        }
-//
-//        int count = values.getOrDefault(prevValue, 0);
-//        if (count == 1) {
-//            values.remove(prevValue);
-//        } else {
-//            values.put(prevValue, count - 1);
-//        }
-//
-//        this.insert(key, value);
-//    }
 
     public void delete(TKey key, Integer value) {
         HashMap<Integer, Integer> values = this.search(key);
