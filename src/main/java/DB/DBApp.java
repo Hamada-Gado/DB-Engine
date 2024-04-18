@@ -433,7 +433,7 @@ public class DBApp {
         }
 
         Table table = Table.loadTable(tableName);
-        HashSet<Integer> filteredPages = Util.filterPagesByIndex(arrSQLTerms, strarrOperators, table.pagesCount());
+        HashSet<Integer> filteredPages = Util.filterPagesByIndex(arrSQLTerms, strarrOperators);
         LinkedList<Record> result = new LinkedList<>();
 
         for (Integer i : filteredPages) {
