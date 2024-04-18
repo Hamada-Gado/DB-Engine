@@ -276,6 +276,7 @@ public class DBApp {
         if (htblColNameValue != null && htblColNameValue.isEmpty()) {
             throw new DBAppException("Delete condition cannot be empty.");
         }
+        Util.validateTypes(strTableName, htblColNameValue);
 
         // 2. Load the table & check if it exists
         Table table = Table.loadTable(strTableName);
@@ -432,7 +433,7 @@ public class DBApp {
         }
 
         Table table = Table.loadTable(tableName);
-        HashSet<Integer> filteredPages = Util.filterPagesByIndex(arrSQLTerms, strarrOperators, table.pagesCount());
+        HashSet<Integer> filteredPages = Util.filterPagesByIndex(arrSQLTerms, strarrOperators);
         LinkedList<Record> result = new LinkedList<>();
 
         for (Integer i : filteredPages) {
