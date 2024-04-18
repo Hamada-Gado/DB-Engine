@@ -275,60 +275,64 @@ public class DBApp {
             records.set(info[1], record);
             page.updatePage();
         }
+
+        // Update the index
+        String pKey = metaData.get(strTableName).get("clusteringKey")[0];
+        int[] info = Util.getRecordPos(strTableName,pKey, (Comparable) clusteringKeyValue);
+        Util.updateIndexes(strTableName, info[0], info[1]);
         // Iterate over each column in the metadata
-        int count = 0;
-        for (String colName : metaData.get(strTableName).keySet()) {//vip
-            // Check if the column has an index
-            if(colName.equals("clusteringKey")) {
-                continue;
-            }
-            String indexName = metaData.get(strTableName).get(colName)[2];
-            if (!indexName.equals("null")) {
-                // Load the index
-                DBBTree index = DBBTree.loadIndex(strTableName, indexName);
-
-                // Update the index
-                String pKey = metaData.get(strTableName).get("clusteringKey")[0];
-                int[] info = Util.getRecordPos(strTableName,pKey, (Comparable) clusteringKeyValue);
-                if (info[2] == 0) {
-                    throw new DBAppException("Key Not found");
-                }
-
-                Page page = table.getPage(info[0]);
-                Vector<Record> records = page.getRecords();
-                Hashtable<String, Object> record = records.get(info[1]).hashtable();
-
-                Object oldValue = record.get(colName);
-                Object newValue = htblColNameValue.get(colName);
-                HashMap<Integer, Integer> pages = index.search((Comparable) oldValue); // fixed??
-                if (pages != null) {
-                    pages.remove((Integer) info[0]);
-                    if (pages.isEmpty()) {
-                        index.delete((Comparable) oldValue);
-                    } else {
-                        index.insert((Comparable) oldValue, pages);
-                    }
-                }
-                pages = index.search((Comparable) newValue);
-                if (pages == null) {
-                    pages = new HashMap<>(); //fix
-                }
-                pages.put(0, info[0]); //fix
-                index.insert((Comparable) newValue, pages);
-
-                // Save the index back to the disk
-                Path indexPath = Paths.get((String) getDbConfig().get("DataPath"), strTableName, indexName + ".ser");
-                try {
-                    FileOutputStream fileOut = new FileOutputStream(indexPath.toAbsolutePath().toString());
-                    ObjectOutputStream out = new ObjectOutputStream(fileOut);
-                    out.writeObject(index);
-                    out.close();
-                    fileOut.close();
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
-            }
-        }
+//        int count = 0;
+//        for (String colName : metaData.get(strTableName).keySet()) {//vip
+//            // Check if the column has an index
+//            if(colName.equals("clusteringKey")) {
+//                continue;
+//            }
+//            String indexName = metaData.get(strTableName).get(colName)[2];
+//            if (!indexName.equals("null")) {
+//                // Load the index
+//                DBBTree index = DBBTree.loadIndex(strTableName, indexName);
+//
+//                // Update the index
+//
+//                if (info[2] == 0) {
+//                    throw new DBAppException("Key Not found");
+//                }
+//
+//                Page page = table.getPage(info[0]);
+//                Vector<Record> records = page.getRecords();
+//                Hashtable<String, Object> record = records.get(info[1]).hashtable();
+//
+//                Object oldValue = record.get(colName);
+//                Object newValue = htblColNameValue.get(colName);
+//                HashMap<Integer, Integer> pages = index.search((Comparable) oldValue); // fixed??
+//                if (pages != null) {
+//                    pages.remove((Integer) info[0]);
+//                    if (pages.isEmpty()) {
+//                        index.delete((Comparable) oldValue);
+//                    } else {
+//                        index.insert((Comparable) oldValue, pages);
+//                    }
+//                }
+//                pages = index.search((Comparable) newValue);
+//                if (pages == null) {
+//                    pages = new HashMap<>(); //fix
+//                }
+//                pages.put(0, info[0]); //fix
+//                index.insert((Comparable) newValue, pages);
+//
+//                // Save the index back to the disk
+//                Path indexPath = Paths.get((String) getDbConfig().get("DataPath"), strTableName, indexName + ".ser");
+//                try {
+//                    FileOutputStream fileOut = new FileOutputStream(indexPath.toAbsolutePath().toString());
+//                    ObjectOutputStream out = new ObjectOutputStream(fileOut);
+//                    out.writeObject(index);
+//                    out.close();
+//                    fileOut.close();
+//                } catch (IOException e) {
+//                    throw new RuntimeException(e);
+//                }
+//            }
+//        }
     }
 
 
