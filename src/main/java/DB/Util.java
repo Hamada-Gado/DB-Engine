@@ -286,7 +286,7 @@ public class Util {
     // Following method returns a set of the pages of the select query using any index
     public static HashSet<Integer> filterPagesByIndex(
             SQLTerm[] arrSQLTerms,
-            String[] strarrOperators, int pagesCount) throws DBAppException {
+            String[] strarrOperators) throws DBAppException {
 
         HashSet<Integer> result = new HashSet<>();
         String tableName = arrSQLTerms[0]._strTableName;
@@ -328,9 +328,13 @@ public class Util {
                 if (search != null) {
                     res.addAll(search);
                 }
-            }
 
-            result.addAll(res);
+                if (result.isEmpty()) {
+                    result.addAll(res);
+                } else {
+                    result.retainAll(res);
+                }
+            }
         }
 
         return result;

@@ -251,42 +251,49 @@ class SelectTest {
             htblColNameType.put("id", "java.lang.Integer");
             htblColNameType.put("name", "java.lang.String");
             htblColNameType.put("gpa", "java.lang.Double");
+            htblColNameType.put("grade", "java.lang.Integer");
             dbApp.createTable(strTableName, "id", htblColNameType);
             dbApp.createIndex(strTableName, "gpa", "DAGPA");
+            dbApp.createIndex(strTableName, "grade", "DAGrade");
 
             Hashtable htblColNameValue = new Hashtable();
             htblColNameValue.put("id", Integer.valueOf(23));
             htblColNameValue.put("name", new String("Ahmed Noor"));
             htblColNameValue.put("gpa", Double.valueOf(0.95));
+            htblColNameValue.put("grade", Integer.valueOf(11));
             dbApp.insertIntoTable(strTableName, htblColNameValue);
 
             htblColNameValue.clear();
             htblColNameValue.put("id", Integer.valueOf(10));
             htblColNameValue.put("name", new String("Dalia Noor"));
             htblColNameValue.put("gpa", Double.valueOf(0.95));
+            htblColNameValue.put("grade", Integer.valueOf(10));
             dbApp.insertIntoTable(strTableName, htblColNameValue);
 
             htblColNameValue.clear();
             htblColNameValue.put("id", Integer.valueOf(56));
             htblColNameValue.put("name", new String("John Noor"));
             htblColNameValue.put("gpa", Double.valueOf(1.5));
+            htblColNameValue.put("grade", Integer.valueOf(11));
             dbApp.insertIntoTable(strTableName, htblColNameValue);
 
             htblColNameValue.clear();
             htblColNameValue.put("id", Integer.valueOf(2));
             htblColNameValue.put("name", new String("John Noor"));
             htblColNameValue.put("gpa", Double.valueOf(1.5));
+            htblColNameValue.put("grade", Integer.valueOf(11));
             dbApp.insertIntoTable(strTableName, htblColNameValue);
 
             htblColNameValue.clear();
             htblColNameValue.put("id", Integer.valueOf(7));
             htblColNameValue.put("name", new String("Zaky Noor"));
             htblColNameValue.put("gpa", Double.valueOf(0.88));
+            htblColNameValue.put("grade", Integer.valueOf(12));
             dbApp.insertIntoTable(strTableName, htblColNameValue);
 
             // name = "John Noor" OR gpa = 1.5
             SQLTerm[] arrSQLTerms;
-            arrSQLTerms = new SQLTerm[2];
+            arrSQLTerms = new SQLTerm[3];
             arrSQLTerms[0] = new SQLTerm();
             arrSQLTerms[0]._strTableName = strTableName;
             arrSQLTerms[0]._strColumnName = "name";
@@ -299,8 +306,15 @@ class SelectTest {
             arrSQLTerms[1]._strOperator = "=";
             arrSQLTerms[1]._objValue = Double.valueOf(1.5);
 
-            String[] strarrOperators = new String[1];
+            arrSQLTerms[2] = new SQLTerm();
+            arrSQLTerms[2]._strTableName = strTableName;
+            arrSQLTerms[2]._strColumnName = "grade";
+            arrSQLTerms[2]._strOperator = "=";
+            arrSQLTerms[2]._objValue = 11;
+
+            String[] strarrOperators = new String[2];
             strarrOperators[0] = "AND";
+            strarrOperators[1] = "AND";
             Iterator resultSet = dbApp.selectFromTable(arrSQLTerms, strarrOperators);
 
             ArrayList list = new ArrayList();
