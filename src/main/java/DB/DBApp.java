@@ -232,6 +232,12 @@ public class DBApp {
             throw new DBAppException("Null arguments");
         }
 
+        if (htblColNameValue.isEmpty()) {
+            throw new DBAppException("No value being updated");
+        }
+
+        Util.validateCols(strTableName, htblColNameValue);
+
         Table table = Table.loadTable(strTableName);
         Hashtable<String, Hashtable<String, String[]>> metaData = Util.getMetadata(strTableName);
 
@@ -239,37 +245,34 @@ public class DBApp {
         if (metaData.get(strTableName) == null) {
             throw new DBAppException("Table does not exist");
         }
+        Object clusteringKeyValue;
+
+        String compare = metaData.get(strTableName).get("clusteringKey")[0];
+        String clustKeyType = metaData.get(strTableName).get(compare)[0];
+        if (clustKeyType.equals("java.lang.Integer")) {
+            clusteringKeyValue = Integer.parseInt(strClusteringKeyValue);
+        } else if (clustKeyType.equals("java.lang.Double")) {
+            clusteringKeyValue = Double.parseDouble(strClusteringKeyValue);
+        } else {
+            clusteringKeyValue = strClusteringKeyValue;
+        }
+        String pKey = metaData.get(strTableName).get("clusteringKey")[0];
+        int[] info = Util.getRecordPos(strTableName, pKey, (Comparable) clusteringKeyValue);
+        Util.deleteIndexes(strTableName, info[0], info[1]);
+
+        if (info[2] == 0) {
+            throw new DBAppException("Record Not found");
+        }
+
+        Page page = table.getPage(info[0]);
+        Vector<Record> records = page.getRecords();
+        Record record = records.get(info[1]);
 
         for (String colName : htblColNameValue.keySet()) {
-
-            String colType = metaData.get(strTableName).get(colName)[0];
-
-            if (colType.equals("java.lang.Integer") && !(htblColNameValue.get(colName) instanceof Integer))
-                throw new DBAppException("Mismatching dataTypes");
-
-            else if (colType.equals("java.lang.String") && !(htblColNameValue.get(colName) instanceof String))
-                throw new DBAppException("Mismatching dataTypes");
-
-            else if (colType.equals("java.lang.Double") && !(htblColNameValue.get(colName) instanceof Double))
-                throw new DBAppException("Mismatching dataTypes");
-
-
-            int[] info = Util.getRecordPos(strTableName, strClusteringKeyValue, colName);
-            if (info[2] == 0) {
-                throw new DBAppException("Key Not found");
-            }
-
-            Page page = table.getPage(info[0]);
-            Vector<Record> records = page.getRecords();
-            Record record = records.get(info[1]);
-            record.hashtable().forEach((key, value) -> {
-                if (htblColNameValue.containsKey(key)) {
-                    record.hashtable().put(key, htblColNameValue.get(key));
-                }
-            });
-            records.set(info[1], record);
-            page.updatePage();
+            record.hashtable().put(colName, htblColNameValue.get(colName));
         }
+        page.savePage();
+        Util.updateIndexes(strTableName, info[0], info[1]);
     }
 
 
@@ -281,6 +284,26 @@ public class DBApp {
                                 Hashtable<String, Object> htblColNameValue) throws DBAppException {
         if (strTableName == null || htblColNameValue == null) {
             throw new DBAppException("Null arguments");
+        }
+
+        // delete all
+        // delete all files in the table folder
+        if (htblColNameValue.isEmpty()) {
+            Table table = Table.loadTable(strTableName);
+            File tableFolder = new File(getDbConfig().get("DataPath") + "/" + strTableName);
+            File[] files = tableFolder.listFiles();
+            if (files != null) {
+                for (File file : files) {
+                    // except the table file
+                    if (!file.delete()) {
+                        throw new DBAppException("Couldn't delete file: " + file.getName());
+                    }
+                }
+            }
+            table.clear();
+            table.saveTable();
+
+            return;
         }
 
         // 1. Validate the delete condition
@@ -317,9 +340,9 @@ public class DBApp {
                     table.removePage(page);
                     Util.recreateIndexes(strTableName, this);
                 } else {
-                    page.updatePage();
+                    page.savePage();
                 }
-                table.updateTable();
+                table.saveTable();
             }
             return;
         }
@@ -338,7 +361,7 @@ public class DBApp {
             deleteFromTableHelper(page, htblColNameValue, table);
         }
 
-        table.updateTable(); //serialize the table
+        table.saveTable(); //serialize the table
         Util.recreateIndexes(strTableName, this);
     }
 
@@ -382,7 +405,7 @@ public class DBApp {
         }
 
         // 6. Update table metadata (optional)
-        table.updateTable(); // serialize the table
+        table.saveTable(); // serialize the table
         Util.recreateIndexes(strTableName, this);
     }
 
@@ -410,7 +433,7 @@ public class DBApp {
         if (page.isEmpty()) {
             table.removePage(page);
         } else {
-            page.updatePage(); //serialize the page
+            page.savePage(); //serialize the page
         }
     }
 

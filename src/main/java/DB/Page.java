@@ -26,7 +26,7 @@ public class Page implements Serializable {
         this.records = new Vector<>();
     }
 
-    public void updatePage() {
+    public void savePage() {
         Path path = Paths.get((String) DBApp.getDbConfig().get("DataPath"), tableName, pageNumber + ".ser");
         try (
                 FileOutputStream fileOut = new FileOutputStream(path.toAbsolutePath().toString());
@@ -71,17 +71,17 @@ public class Page implements Serializable {
 
     public void add(Record record) {
         records.add(record);
-        updatePage();
+        savePage();
     }
 
     public void add(int recordNo, Record record) {
         records.add(recordNo, record);
-        updatePage();
+        savePage();
     }
 
     public Record remove(int recordNo) {
         Record htbl = records.remove(recordNo);
-        updatePage();
+        savePage();
         return htbl;
     }
 

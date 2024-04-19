@@ -1,6 +1,5 @@
 package DB;
 
-import BTree.BTree;
 import BTree.DBBTree;
 
 import java.util.HashMap;
@@ -38,19 +37,13 @@ public class DeleteTests {
                 }
                 dbApp.insertIntoTable(strTableName, htblColNameValue);
             }
-            // print table before deleting
-//            System.out.println("Printing table before deleting");
-//            System.out.println(Table.loadTable(strTableName));
 
             Hashtable htblColNameValue = new Hashtable();
             htblColNameValue.put("gpa", 7.7);
             dbApp.deleteFromTable(strTableName, htblColNameValue);
 
             // Check that the rows have been deleted
-            // print the table after delete
-//            System.out.println("Printing table after deleting");
             Table table = Table.loadTable(strTableName);
-//            System.out.println(table);
 
             // Check that the remaining rows still exist
             assertEquals(4, table.pagesCount());
@@ -109,19 +102,12 @@ public class DeleteTests {
 
             dbApp.createIndex(strTableName, "gpa", "gpaIndex");
 
-            // print table before deleting
-//            System.out.println("Printing table before deleting");
-//            System.out.println(Table.loadTable(strTableName));
-
             Hashtable htblColNameValue = new Hashtable();
             htblColNameValue.put("gpa", 7.7);
             dbApp.deleteFromTable(strTableName, htblColNameValue);
 
             // Check that the rows have been deleted
-            // print the table after delete
             Table table = Table.loadTable(strTableName);
-//            System.out.println("Printing table after deleting");
-//            System.out.println(table);
 
             // Check that the remaining rows still exist
             assertEquals(4, table.pagesCount());
@@ -155,6 +141,59 @@ public class DeleteTests {
             assertEquals(2, res.get(1));
             assertEquals(1, res.get(2));
             assertEquals(1, res.get(3));
+        } catch (DBAppException e) {
+            e.printStackTrace();
+            fail("DBAppException thrown");
+        }
+    }
+
+
+    @org.junit.jupiter.api.Test
+    void testDeleteAll() {
+        try {
+            String strTableName = "TestDeleteAll";
+            DBApp dbApp = new DBApp();
+            DBApp.getDbConfig().put("MaximumRowsCountinPage", "2");
+
+            Hashtable htblColNameType = new Hashtable();
+            htblColNameType.put("id", "java.lang.Integer");
+            htblColNameType.put("name", "java.lang.String");
+            htblColNameType.put("gpa", "java.lang.Double");
+            dbApp.createTable(strTableName, "id", htblColNameType);
+            dbApp.createIndex(strTableName, "name", "nameIndex");
+
+            // Insert multiple rows
+            for (int i = 0; i < 10; i++) {
+                Hashtable htblColNameValue = new Hashtable();
+                htblColNameValue.put("id", Integer.valueOf(i));
+                htblColNameValue.put("name", new String("Name " + i));
+                if (i == 1 || i % 3 == 0) {
+                    htblColNameValue.put("gpa", Double.valueOf(7.7));
+                    htblColNameValue.put("name", "winner");
+                } else {
+                    htblColNameValue.put("gpa", Double.valueOf(0.7));
+                    htblColNameValue.put("name", "loser");
+                }
+                dbApp.insertIntoTable(strTableName, htblColNameValue);
+            }
+
+            dbApp.deleteFromTable(strTableName, new Hashtable());
+
+            // Check that the rows have been deleted
+            Table table = Table.loadTable(strTableName);
+
+            // Check that the remaining rows still exist
+            assertEquals(0, table.pagesCount());
+            assertTrue(table.getPagesPath().isEmpty());
+            assertTrue(table.getClusteringKeyMin().isEmpty());
+
+            // Check that the index has been updated
+            try {
+                DBBTree.loadIndex(strTableName, "nameIndex");
+            } catch (DBAppException e) {
+                assertEquals("Index nameIndex does not exist", e.getMessage());
+            }
+
         } catch (DBAppException e) {
             e.printStackTrace();
             fail("DBAppException thrown");
