@@ -147,17 +147,13 @@ public class Util {
         }
     }
 
-    public static void validateTypes(String tableName, Hashtable<String, Object> colNameValue) throws DBAppException {
+    public static void validateCols(String tableName, Hashtable<String, Object> colNameValue) throws DBAppException {
         Hashtable<String, Hashtable<String, String[]>> metadata = getMetadata(tableName);
         if (!metadata.containsKey(tableName)) {
             throw new DBAppException("Table " + tableName + " does not exist");
         }
 
         for (String colName : colNameValue.keySet()) {
-            if (colName.equals("clusteringKey")) {
-                continue;
-            }
-
             if (!metadata.get(tableName).containsKey(colName)) {
                 throw new DBAppException("Column " + colName + " does not exist in table " + tableName);
             }
@@ -286,7 +282,7 @@ public class Util {
     // Following method returns a set of the pages of the select query using any index
     public static HashSet<Integer> filterPagesByIndex(
             SQLTerm[] arrSQLTerms,
-            String[] strarrOperators, int pagesCount) throws DBAppException {
+            String[] strarrOperators) throws DBAppException {
 
         HashSet<Integer> result = new HashSet<>();
         String tableName = arrSQLTerms[0]._strTableName;
@@ -328,9 +324,13 @@ public class Util {
                 if (search != null) {
                     res.addAll(search);
                 }
-            }
 
-            result.addAll(res);
+                if (result.isEmpty()) {
+                    result.addAll(res);
+                } else {
+                    result.retainAll(res);
+                }
+            }
         }
 
         return result;
