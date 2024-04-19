@@ -47,27 +47,27 @@ public class IndexTest {
 //            gpaBTree.print();
 
             HashMap result = nameBTree.search("Ahmed Noor");
-            assertTrue(result.keySet().contains(0));
+            assertTrue(result.containsKey(0));
             assertEquals(1, result.size());
             assertEquals(1, result.get(0));
 
             result = nameBTree.search("Dalia Noor");
-            assertTrue(result.keySet().contains(1));
+            assertTrue(result.containsKey(1));
             assertEquals(1, result.size());
             assertEquals(1, result.get(1));
 
             result = gpaBTree.search(0.95);
-            assertTrue(result.keySet().contains(0));
+            assertTrue(result.containsKey(0));
             assertEquals(1, result.size());
             assertEquals(1, result.get(0));
 
             result = gpaBTree.search(1.5);
-            assertTrue(result.keySet().contains(1));
+            assertTrue(result.containsKey(1));
             assertEquals(1, result.size());
             assertEquals(1, result.get(1));
         } catch (DBAppException e) {
             e.printStackTrace();
-            assertFalse(true);
+            fail("DBAppException thrown");
         }
     }
 
