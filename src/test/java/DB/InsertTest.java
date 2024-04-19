@@ -1,9 +1,11 @@
 package DB;
 
+import BTree.DBBTree;
+
+import java.util.HashMap;
 import java.util.Hashtable;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.*;
 
 public class InsertTest {
 
@@ -59,6 +61,7 @@ public class InsertTest {
             }
         } catch (DBAppException e) {
             e.printStackTrace();
+            fail("DBAppException thrown");
         }
     }
 
@@ -84,10 +87,9 @@ public class InsertTest {
             }
 
             assertEquals(3, Table.loadTable(strTableName).pagesCount());
-//            System.out.println(Table.loadTable(strTableName));
         } catch (DBAppException e) {
             e.printStackTrace();
-            assertFalse(true);
+            fail("DBAppException thrown");
         }
     }
 
@@ -103,24 +105,62 @@ public class InsertTest {
             htblColNameType.put("name", "java.lang.String");
             htblColNameType.put("gpa", "java.lang.Double");
             dbApp.createTable(strTableName, "id", htblColNameType);
+            dbApp.createIndex(strTableName, "name", "BTree-Name");
 
             Hashtable record = new Hashtable();
-            record.put("gpa", 5.0);
-            record.put("name", "student");
             for (int i = 0; i < 500; i++) {
                 record.put("id", i);
+                if (i < 200) {
+                    record.put("name", "b");
+                } else {
+                    record.put("name", "a");
+                }
+                record.put("gpa", 0.5 + i);
                 dbApp.insertIntoTable(strTableName, record);
             }
 
             time = (System.nanoTime() - time) / 1000000000;
             System.out.println("Time taken: " + time + " secs");
             Table table = Table.loadTable(strTableName);
-
-//            System.out.println(table);
             assertEquals(3, table.pagesCount());
+
+            DBBTree index = DBBTree.loadIndex(strTableName, "BTree-Name");
+
+            HashMap<Integer, Integer> res = index.search("a");
+            assertNotNull(res);
+            assertEquals(2, res.size());
+            assertEquals(200, res.get(1));
+            assertEquals(100, res.get(2));
+
+            res = index.search("b");
+            assertNotNull(res);
+            assertEquals(1, res.size());
+            assertEquals(200, res.get(0));
         } catch (DBAppException e) {
             e.printStackTrace();
-            assertFalse(true);
+            fail("DBAppException thrown");
+        }
+    }
+
+    @org.junit.jupiter.api.Test
+    void testWrongType() {
+        try {
+            String strTableName = "TestWrongType";
+            DBApp dbApp = new DBApp();
+
+            Hashtable htblColNameType = new Hashtable();
+            htblColNameType.put("id", "java.lang.Integer");
+            htblColNameType.put("name", "java.lang.String");
+            htblColNameType.put("gpa", "java.lang.Double");
+            dbApp.createTable(strTableName, "id", htblColNameType);
+
+            Hashtable htblColNameValue = new Hashtable();
+            htblColNameValue.put("id", Integer.valueOf(20));
+            htblColNameValue.put("name", new String("Ahmed Noor"));
+            htblColNameValue.put("gpa", Float.valueOf(0.95f));
+            dbApp.insertIntoTable(strTableName, htblColNameValue);
+        } catch (DBAppException e) {
+            assertEquals("Invalid value for column gpa of type java.lang.Double", e.getMessage());
         }
     }
 }

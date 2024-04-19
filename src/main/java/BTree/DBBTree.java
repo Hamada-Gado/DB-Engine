@@ -97,7 +97,7 @@ public class DBBTree<TKey extends Comparable<TKey>> extends BTree<TKey, HashMap<
         Path file = Paths.get((String) DBApp.getDbConfig().get("DataPath"), tableName, indexName + ".ser");
 
         if (!file.toFile().exists()) {
-            throw new DBAppException("Index file does not exist");
+            throw new DBAppException("Index " + indexName + " does not exist");
         }
 
         try (

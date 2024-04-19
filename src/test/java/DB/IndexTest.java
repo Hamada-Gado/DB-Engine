@@ -42,32 +42,28 @@ public class IndexTest {
             DBBTree<String> nameBTree = DBBTree.loadIndex(strTableName, "BTree-Name");
             DBBTree<Double> gpaBTree = DBBTree.loadIndex(strTableName, "BTree-GPA");
 
-//            System.out.println(Table.loadTable(strTableName));
-//            nameBTree.print();
-//            gpaBTree.print();
-
             HashMap result = nameBTree.search("Ahmed Noor");
-            assertTrue(result.keySet().contains(0));
+            assertTrue(result.containsKey(0));
             assertEquals(1, result.size());
             assertEquals(1, result.get(0));
 
             result = nameBTree.search("Dalia Noor");
-            assertTrue(result.keySet().contains(1));
+            assertTrue(result.containsKey(1));
             assertEquals(1, result.size());
             assertEquals(1, result.get(1));
 
             result = gpaBTree.search(0.95);
-            assertTrue(result.keySet().contains(0));
+            assertTrue(result.containsKey(0));
             assertEquals(1, result.size());
             assertEquals(1, result.get(0));
 
             result = gpaBTree.search(1.5);
-            assertTrue(result.keySet().contains(1));
+            assertTrue(result.containsKey(1));
             assertEquals(1, result.size());
             assertEquals(1, result.get(1));
         } catch (DBAppException e) {
             e.printStackTrace();
-            assertFalse(true);
+            fail("DBAppException thrown");
         }
     }
 
@@ -80,7 +76,6 @@ public class IndexTest {
         bTree.insert("C", 3);
         bTree.insert("E", 4);
         bTree.insert("F", 5);
-//        bTree.print();
 
         LinkedList<Integer> result = bTree.search("B", "E");
         assertEquals(3, result.size());
@@ -122,7 +117,6 @@ public class IndexTest {
         bTree.insert("E", 2);
         bTree.insert("E", 4);
         bTree.insert("F", 5);
-//        bTree.print();
 
         HashSet<Integer> result = bTree.searchRange("B", "D");
         assertEquals(2, result.size());

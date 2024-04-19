@@ -160,7 +160,7 @@ class SelectTest {
         postfix.add("XOR");
 
         result = Util.evaluatePostfix(postfix);
-        assertEquals(false, result);
+        assertFalse(result);
     }
 
     @org.junit.jupiter.api.Test
@@ -218,7 +218,7 @@ class SelectTest {
             assertArrayEquals(new int[]{0, 4, 1}, recordPos);
         } catch (DBAppException e) {
             e.printStackTrace();
-            assertTrue(false);
+            fail("DBAppException thrown");
         }
     }
 
@@ -303,16 +303,13 @@ class SelectTest {
             ArrayList list = new ArrayList();
             resultSet.forEachRemaining(list::add);
 
-//            System.out.println(Table.loadTable(strTableName));
-//            System.out.println(list);
-
             assertEquals(3, list.size());
             assertEquals(2, ((Record) list.get(0)).hashtable().get("id"));
             assertEquals(10, ((Record) list.get(1)).hashtable().get("id"));
             assertEquals(56, ((Record) list.get(2)).hashtable().get("id"));
         } catch (DBAppException e) {
             e.printStackTrace();
-            assertTrue(false);
+            fail("DBAppException thrown");
         }
     }
 }
