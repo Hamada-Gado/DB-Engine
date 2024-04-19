@@ -1,7 +1,6 @@
 package DB;
 
 import BTree.DBBTree;
-import org.jetbrains.annotations.NotNull;
 
 import java.io.*;
 import java.nio.file.Path;
@@ -75,9 +74,12 @@ public class DBApp {
     // data/teacher/teacher.ser
     // data/student/student.ser
     // data/student/31234124.ser
-    public void createTable(@NotNull String strTableName,
-                            @NotNull String strClusteringKeyColumn,
-                            @NotNull Hashtable<String, String> htblColNameType) throws DBAppException {
+    public void createTable(String strTableName,
+                            String strClusteringKeyColumn,
+                            Hashtable<String, String> htblColNameType) throws DBAppException {
+        if (strTableName == null || strClusteringKeyColumn == null || htblColNameType == null) {
+            throw new DBAppException("Null arguments");
+        }
 
         for (String colName : htblColNameType.keySet()) {
             if (!htblColNameType.get(colName).equals("java.lang.Integer") &&
@@ -169,7 +171,7 @@ public class DBApp {
     // htblColNameValue must include a value for the primary key
     public void insertIntoTable(String strTableName,
                                 Hashtable<String, Object> htblColNameValue) throws DBAppException {
-        if (strTableName == null || htblColNameValue == null){
+        if (strTableName == null || htblColNameValue == null) {
             throw new DBAppException(("No value being inserted"));
         }
 
@@ -226,9 +228,8 @@ public class DBApp {
     public void updateTable(String strTableName,
                             String strClusteringKeyValue,
                             Hashtable<String, Object> htblColNameValue) throws DBAppException {
-        //return null lw el clusKey msh mwgood
-        if (strClusteringKeyValue == null) {
-            throw new DBAppException("no clustering key is null");
+        if (strTableName == null || strClusteringKeyValue == null || htblColNameValue == null) {
+            throw new DBAppException("Null arguments");
         }
 
         Table table = Table.loadTable(strTableName);
@@ -278,6 +279,9 @@ public class DBApp {
     // htblColNameValue enteries are ANDED together
     public void deleteFromTable(String strTableName,
                                 Hashtable<String, Object> htblColNameValue) throws DBAppException {
+        if (strTableName == null || htblColNameValue == null) {
+            throw new DBAppException("Null arguments");
+        }
 
         // 1. Validate the delete condition
         if (htblColNameValue != null && htblColNameValue.isEmpty()) {
@@ -413,7 +417,6 @@ public class DBApp {
     // select * from student where name = "John Noor" OR gpa = 1.5 AND id = 2343432;
     public Iterator selectFromTable(SQLTerm[] arrSQLTerms,
                                     String[] strarrOperators) throws DBAppException {
-
         if (arrSQLTerms == null || strarrOperators == null) {
             throw new DBAppException("Null arguments");
         }
@@ -462,7 +465,6 @@ public class DBApp {
 
     private void selectFromTableHelper(SQLTerm[] arrSQLTerms, String[] strarrOperators,
                                        Record record, LinkedList<Record> result) {
-
         if (arrSQLTerms.length == 1) {
             SQLTerm term = arrSQLTerms[0];
             Object value = record.hashtable().get(term._strColumnName);
