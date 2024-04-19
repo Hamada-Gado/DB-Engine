@@ -43,7 +43,7 @@ public class DeleteTests {
             dbApp.deleteFromTable(strTableName, htblColNameValue);
 
             // Check that the rows have been deleted
-            Table table = Table.loadTable(strTableName);
+            Table<Object> table = Table.loadTable(strTableName);
 
             // Check that the remaining rows still exist
             assertEquals(4, table.pagesCount());
@@ -107,7 +107,7 @@ public class DeleteTests {
             dbApp.deleteFromTable(strTableName, htblColNameValue);
 
             // Check that the rows have been deleted
-            Table table = Table.loadTable(strTableName);
+            Table<Object> table = Table.loadTable(strTableName);
 
             // Check that the remaining rows still exist
             assertEquals(4, table.pagesCount());

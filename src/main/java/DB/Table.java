@@ -9,29 +9,45 @@ import java.nio.file.Paths;
 import java.util.*;
 
 /**
+ * This class represents a Table object that implements Iterable, Cloneable, and Serializable interfaces.
+ * It contains a list of Page objects and provides methods to manipulate and save these pages.
+ *
  * @author ahmedgado
  */
-
-public class Table implements Iterable<Page>, Cloneable, Serializable {
+public class Table<PKey> implements Iterable<Page>, Cloneable, Serializable {
     private final String tableName;
     private Vector<String> pagesPath;
-    private Vector<Comparable> clusteringKeyMin;
+    private Vector<Comparable<PKey>> clusteringKeyMin;
     private int lastPageNumber = 0;
 
+    /**
+     * Constructor for the Table class.
+     *
+     * @param tableName The name of the table.
+     */
     public Table(String tableName) {
         this.tableName = tableName;
         pagesPath = new Vector<>();
         clusteringKeyMin = new Vector<>();
     }
 
+    /**
+     * @return The paths of the pages.
+     */
     public Vector<String> getPagesPath() {
         return pagesPath;
     }
 
-    public Vector<Comparable> getClusteringKeyMin() {
+    /**
+     * @return The minimum values of the clustering keys.
+     */
+    public Vector<Comparable<PKey>> getClusteringKeyMin() {
         return clusteringKeyMin;
     }
 
+    /**
+     * Clears the pagesPath and clusteringKeyMin vectors and resets the lastPageNumber to 0.
+     */
     public void clear() {
         pagesPath.clear();
         clusteringKeyMin.clear();
@@ -39,7 +55,7 @@ public class Table implements Iterable<Page>, Cloneable, Serializable {
     }
 
     /**
-     * Serialize the table only not the pages
+     * Serializes the table (not the pages) and saves it to a file.
      */
     public void saveTable() {
         Path path = Paths.get((String) DBApp.getDbConfig().get("DataPath"), tableName, tableName + ".ser");
@@ -53,12 +69,11 @@ public class Table implements Iterable<Page>, Cloneable, Serializable {
     }
 
     /**
-     * @param max the maximum number of records in a page
-     *            <p>
-     *            serialize the page and add its path to the table
+     * Creates a new Page object, serializes it, and adds its path to the table.
+     *
+     * @param max The maximum number of records in a page.
+     * @return The created Page object.
      */
-
-
     public Page addPage(int max) {
         Page page = new Page(tableName, lastPageNumber++, max);
 
@@ -72,7 +87,11 @@ public class Table implements Iterable<Page>, Cloneable, Serializable {
         return page;
     }
 
-
+    /**
+     * Removes a page from the table and deletes its file.
+     *
+     * @param index The index of the page to be removed.
+     */
     public void removePage(int index) {
         File file = new File(pagesPath.get(index));
         if (!file.delete()) {
@@ -83,7 +102,11 @@ public class Table implements Iterable<Page>, Cloneable, Serializable {
         clusteringKeyMin.remove(index);
     }
 
-
+    /**
+     * Removes a page from the table and deletes its file.
+     *
+     * @param page The page to be removed.
+     */
     public void removePage(Page page) {
         String pageName = Paths.get((String) DBApp.getDbConfig().get("DataPath"),
                 tableName, page.getPageNumber() + ".ser").toAbsolutePath().toString();
@@ -92,8 +115,10 @@ public class Table implements Iterable<Page>, Cloneable, Serializable {
     }
 
     /**
-     * @param index the index of the page
-     * @return the name of the table
+     * Deserializes a page from a file.
+     *
+     * @param index The index of the page.
+     * @return The deserialized Page object.
      */
     public Page getPage(int index) {
         String path = pagesPath.get(index);
@@ -111,35 +136,47 @@ public class Table implements Iterable<Page>, Cloneable, Serializable {
     }
 
     /**
-     * @param pageName the name of the page
-     * @return the page
+     * @return The number of pages in the table.
      */
-    public Page getPage(String pageName) {
-        Path path = Paths.get((String) DBApp.getDbConfig().get("DataPath"), tableName, pageName + ".ser");
-        int index = pagesPath.indexOf(path.toAbsolutePath().toString());
-        if (index == -1) {
-            throw new RuntimeException("Page not found");
-        } else {
-            return getPage(index);
-        }
-    }
-
     public int pagesCount() {
         return pagesPath.size();
     }
 
+    /**
+     * Adds a record to a page and updates the clustering key minimum value.
+     *
+     * @param record The record to be added.
+     * @param pKey   The primary key.
+     * @param page   The page to which the record should be added.
+     */
     public void addRecord(Record record, String pKey, Page page) {
         page.add(record);
-        clusteringKeyMin.add(page.getPageNumber(), (Comparable) page.getRecords().getFirst().hashtable().get(pKey));
+        clusteringKeyMin.add(page.getPageNumber(), (Comparable<PKey>) page.getRecords().getFirst().hashtable().get(pKey));
         saveTable();
     }
 
+    /**
+     * Adds a record at a specific position in a page and updates the clustering key minimum value.
+     *
+     * @param recordNo The position at which the record should be added.
+     * @param record   The record to be added.
+     * @param pKey     The primary key.
+     * @param page     The page to which the record should be added.
+     */
     public void addRecord(int recordNo, Record record, String pKey, Page page) {
         page.add(recordNo, record);
-        clusteringKeyMin.add(page.getPageNumber(), (Comparable) page.getRecords().getFirst().hashtable().get(pKey));
+        clusteringKeyMin.add(page.getPageNumber(), (Comparable<PKey>) page.getRecords().getFirst().hashtable().get(pKey));
         saveTable();
     }
 
+    /**
+     * Removes a record at a specific position from a page and updates the clustering key minimum value.
+     *
+     * @param recordNo The position of the record to be removed.
+     * @param pKey     The primary key.
+     * @param page     The page from which the record should be removed.
+     * @return The removed record.
+     */
     public Record removeRecord(int recordNo, String pKey, Page page) {
         Record htbl = page.remove(recordNo);
         if (page.isEmpty()) {
@@ -149,13 +186,20 @@ public class Table implements Iterable<Page>, Cloneable, Serializable {
             pagesPath.remove(index);
             clusteringKeyMin.remove(index);
         } else {
-            clusteringKeyMin.add(page.getPageNumber(), (Comparable) page.getRecords().getFirst().hashtable().get(pKey));
+            clusteringKeyMin.add(page.getPageNumber(), (Comparable<PKey>) page.getRecords().getFirst().hashtable().get(pKey));
         }
         saveTable();
 
         return htbl;
     }
 
+    /**
+     * This method overrides the toString method from the Object class.
+     * It iterates over the pages and appends each page to a StringBuilder.
+     * If the StringBuilder is not empty, it removes the last newline character.
+     *
+     * @return A string representation of the pages.
+     */
     @Override
     public String toString() {
         StringBuilder res = new StringBuilder();
@@ -176,40 +220,48 @@ public class Table implements Iterable<Page>, Cloneable, Serializable {
     }
 
     /**
-     * Saves the table to a file
+     * Deserializes a table from a file.
      *
-     * @param tableName the table to save
-     * @return table deserialize the table from the file
+     * @param tableName The name of the table.
+     * @return The deserialized Table object.
+     * @throws DBAppException If the table does not exist.
      */
-
-    public static Table loadTable(String tableName) throws DBAppException {
+    public static <T> Table<T> loadTable(String tableName) throws DBAppException {
         Path path = Paths.get((String) DBApp.getDbConfig().get("DataPath"), tableName, tableName + ".ser");
 
         if (!path.toFile().exists()) {
             throw new DBAppException("Table doesn't exit");
         }
 
-        Table table;
+        Table<T> table;
         try (
                 FileInputStream fileIn = new FileInputStream(path.toAbsolutePath().toString());
                 ObjectInputStream in = new ObjectInputStream(fileIn)) {
-            table = (Table) in.readObject();
+            table = (Table<T>) in.readObject();
         } catch (IOException | ClassNotFoundException e) {
             throw new RuntimeException(e);
         }
         return table;
     }
 
+    /**
+     * @return An iterator over the pages in the table.
+     */
     public @NotNull Iterator<Page> iterator() {
         return new TableIterator();
     }
 
+    /**
+     * Creates a copy of the table.
+     *
+     * @return The copied Table object.
+     */
     @Override
-    public Table clone() {
+    public Table<PKey> clone() {
         try {
-            Table clone = (Table) super.clone();
+            Table<PKey> clone = (Table<PKey>) super.clone();
             clone.pagesPath = (Vector<String>) pagesPath.clone();
-            clone.clusteringKeyMin = (Vector<Comparable>) clusteringKeyMin.clone();
+            clone.clusteringKeyMin = (Vector<Comparable<PKey>>) clusteringKeyMin.clone();
 
             return clone;
         } catch (CloneNotSupportedException e) {
@@ -217,22 +269,35 @@ public class Table implements Iterable<Page>, Cloneable, Serializable {
         }
     }
 
+    /**
+     * This class represents an iterator over the pages in the table.
+     */
     private class TableIterator implements Iterator<Page> {
         private int pageIndex;
         private Page page;
 
+        /**
+         * Constructor for the TableIterator class.
+         */
         public TableIterator() {
             pageIndex = 0;
             page = null;
         }
 
+        /**
+         * @return True if there are more pages, false otherwise.
+         */
         @Override
         public boolean hasNext() {
             return pageIndex < pagesCount();
         }
 
+        /**
+         * @return The next page.
+         * @throws RuntimeException If there are no more pages.
+         */
         @Override
-        public Page next() { //this method is used to get the next page
+        public Page next() {
             if (!hasNext()) {
                 throw new RuntimeException("No more records");
             }
@@ -244,4 +309,3 @@ public class Table implements Iterable<Page>, Cloneable, Serializable {
         }
     }
 }
-
