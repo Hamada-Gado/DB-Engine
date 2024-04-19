@@ -147,17 +147,13 @@ public class Util {
         }
     }
 
-    public static void validateTypes(String tableName, Hashtable<String, Object> colNameValue) throws DBAppException {
+    public static void validateCols(String tableName, Hashtable<String, Object> colNameValue) throws DBAppException {
         Hashtable<String, Hashtable<String, String[]>> metadata = getMetadata(tableName);
         if (!metadata.containsKey(tableName)) {
             throw new DBAppException("Table " + tableName + " does not exist");
         }
 
         for (String colName : colNameValue.keySet()) {
-            if (colName.equals("clusteringKey")) {
-                continue;
-            }
-
             if (!metadata.get(tableName).containsKey(colName)) {
                 throw new DBAppException("Column " + colName + " does not exist in table " + tableName);
             }

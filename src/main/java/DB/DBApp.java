@@ -169,34 +169,21 @@ public class DBApp {
     // htblColNameValue must include a value for the primary key
     public void insertIntoTable(String strTableName,
                                 Hashtable<String, Object> htblColNameValue) throws DBAppException {
-        //ToDo: validation
-        //lw el insert mfhoosh values
-        if  (htblColNameValue == null){
-            throw new DBAppException(("No value being inserted"))
+        if (strTableName == null || htblColNameValue == null){
+            throw new DBAppException(("No value being inserted"));
         }
+
+        Util.validateCols(strTableName, htblColNameValue);
 
         Hashtable<String, Hashtable<String, String[]>> metaData = Util.getMetadata(strTableName);
-
-        //lw el insert fe data types 8alat
-        int c = 1;
-        for (String key : htblColNameValue.keySet()) {
-            if (!(htblColNameValue.get(key).getClass().getName() == metaData.get(strTableName).get("Column Type")[c])) {
-                throw new DBAppException("Invalid data type in new entry");
-            }
-            c++;
-        }
-
-        //lw el insert 3ndo columns msh nafs el 3adad zy el table
-        if (!(htblColNameValue.size()==metaData.size())){
-            throw new DBAppException("Invalid record being inserted");
-        }
-
-
         if (metaData.get(strTableName) == null) {
             throw new DBAppException("Table not found");
         }
 
         String pKey = metaData.get(strTableName).get("clusteringKey")[0];
+        if (!htblColNameValue.containsKey(pKey)) {
+            throw new DBAppException("Primary key not found");
+        }
         Comparable pValue = (Comparable) htblColNameValue.get(pKey);
 
         Table currentTable = Table.loadTable(strTableName);
@@ -296,7 +283,7 @@ public class DBApp {
         if (htblColNameValue != null && htblColNameValue.isEmpty()) {
             throw new DBAppException("Delete condition cannot be empty.");
         }
-        Util.validateTypes(strTableName, htblColNameValue);
+        Util.validateCols(strTableName, htblColNameValue);
 
         // 2. Load the table & check if it exists
         Table table = Table.loadTable(strTableName);
@@ -449,7 +436,7 @@ public class DBApp {
                 throw new DBAppException("Invalid operator");
             }
 
-            Util.validateTypes(tableName, new Hashtable<>(Map.of(term._strColumnName, term._objValue)));
+            Util.validateCols(tableName, new Hashtable<>(Map.of(term._strColumnName, term._objValue)));
         }
 
         Table table = Table.loadTable(tableName);
