@@ -3,7 +3,6 @@ package DB;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.*;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
@@ -13,10 +12,10 @@ import java.util.*;
  * @author ahmedgado
  */
 
-public class Table implements Iterable<Page>, Serializable {
+public class Table implements Iterable<Page>, Cloneable, Serializable {
     private final String tableName;
-    private final Vector<String> pagesPath;
-    private final Vector<Comparable> clusteringKeyMin;
+    private Vector<String> pagesPath;
+    private Vector<Comparable> clusteringKeyMin;
     private int lastPageNumber = 0;
 
     public Table(String tableName) {
@@ -71,6 +70,25 @@ public class Table implements Iterable<Page>, Serializable {
         return page;
     }
 
+
+    public void removePage(Page page, int index) {
+        File file = new File(pagesPath.get(index));
+        if (!file.delete()) {
+            throw new RuntimeException("Failed to delete the page");
+        }
+
+        pagesPath.remove(index);
+        clusteringKeyMin.remove(index);
+    }
+
+
+    public void removePage(Page page) {
+        String pageName = Paths.get((String) DBApp.getDbConfig().get("DataPath"),
+                tableName, page.getPageNumber() + ".ser").toAbsolutePath().toString();
+        int index = pagesPath.indexOf(pageName);
+        removePage(page, index);
+    }
+
     /**
      * @param index the index of the page
      * @return the name of the table
@@ -108,21 +126,29 @@ public class Table implements Iterable<Page>, Serializable {
         return pagesPath.size();
     }
 
-    public void addRecord(Hashtable<String, Object> record, String pKey, Page page) {
+    public void addRecord(Record record, String pKey, Page page) {
         page.add(record);
-        clusteringKeyMin.add(page.getPageNumber(), (Comparable) page.getRecords().get(0).get(pKey));
+        clusteringKeyMin.add(page.getPageNumber(), (Comparable) page.getRecords().getFirst().hashtable().get(pKey));
         updateTable();
     }
 
-    public void addRecord(int recordNo, Hashtable<String, Object> record, String pKey, Page page) {
+    public void addRecord(int recordNo, Record record, String pKey, Page page) {
         page.add(recordNo, record);
-        clusteringKeyMin.add(page.getPageNumber(), (Comparable) page.getRecords().get(0).get(pKey));
+        clusteringKeyMin.add(page.getPageNumber(), (Comparable) page.getRecords().getFirst().hashtable().get(pKey));
         updateTable();
     }
 
-    public Hashtable<String, Object> removeRecord(int recordNo, String pKey, Page page) {
-        Hashtable htbl = page.remove(recordNo);
-        clusteringKeyMin.add(page.getPageNumber(), (Comparable) page.getRecords().get(0).get(pKey));
+    public Record removeRecord(int recordNo, String pKey, Page page) {
+        Record htbl = page.remove(recordNo);
+        if (page.isEmpty()) {
+            String pageName = Paths.get((String) DBApp.getDbConfig().get("DataPath"),
+                    tableName, page.getPageNumber() + ".ser").toAbsolutePath().toString();
+            int index = pagesPath.indexOf(pageName);
+            pagesPath.remove(index);
+            clusteringKeyMin.remove(index);
+        } else {
+            clusteringKeyMin.add(page.getPageNumber(), (Comparable) page.getRecords().getFirst().hashtable().get(pKey));
+        }
         updateTable();
 
         return htbl;
@@ -174,6 +200,19 @@ public class Table implements Iterable<Page>, Serializable {
 
     public @NotNull Iterator<Page> iterator() {
         return new TableIterator();
+    }
+
+    @Override
+    public Table clone() {
+        try {
+            Table clone = (Table) super.clone();
+            clone.pagesPath = (Vector<String>) pagesPath.clone();
+            clone.clusteringKeyMin = (Vector<Comparable>) clusteringKeyMin.clone();
+
+            return clone;
+        } catch (CloneNotSupportedException e) {
+            throw new AssertionError();
+        }
     }
 
     private class TableIterator implements Iterator<Page> {
