@@ -294,7 +294,6 @@ public class DBApp {
             File[] files = tableFolder.listFiles();
             if (files != null) {
                 for (File file : files) {
-                    // except the table file
                     if (!file.delete()) {
                         throw new DBAppException("Couldn't delete file: " + file.getName());
                     }
@@ -306,10 +305,7 @@ public class DBApp {
             return;
         }
 
-        // 1. Validate the delete condition
-        if (htblColNameValue != null && htblColNameValue.isEmpty()) {
-            throw new DBAppException("Delete condition cannot be empty.");
-        }
+        // 1. Validate the cols
         Util.validateCols(strTableName, htblColNameValue);
 
         // 2. Load the table & check if it exists
@@ -558,11 +554,13 @@ public class DBApp {
 
             SQLTerm[] arrSQLTerms;
             arrSQLTerms = new SQLTerm[2];
+            arrSQLTerms[0] = new SQLTerm();
             arrSQLTerms[0]._strTableName = "Student";
             arrSQLTerms[0]._strColumnName = "name";
             arrSQLTerms[0]._strOperator = "=";
             arrSQLTerms[0]._objValue = "John Noor";
 
+            arrSQLTerms[1] = new SQLTerm();
             arrSQLTerms[1]._strTableName = "Student";
             arrSQLTerms[1]._strColumnName = "gpa";
             arrSQLTerms[1]._strOperator = "=";
