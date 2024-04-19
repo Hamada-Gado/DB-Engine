@@ -123,4 +123,26 @@ public class InsertTest {
             assertFalse(true);
         }
     }
+
+    @org.junit.jupiter.api.Test
+    void testWrongType() {
+        try {
+            String strTableName = "TestWrongType";
+            DBApp dbApp = new DBApp();
+
+            Hashtable htblColNameType = new Hashtable();
+            htblColNameType.put("id", "java.lang.Integer");
+            htblColNameType.put("name", "java.lang.String");
+            htblColNameType.put("gpa", "java.lang.Double");
+            dbApp.createTable(strTableName, "id", htblColNameType);
+
+            Hashtable htblColNameValue = new Hashtable();
+            htblColNameValue.put("id", Integer.valueOf(20));
+            htblColNameValue.put("name", new String("Ahmed Noor"));
+            htblColNameValue.put("gpa", Float.valueOf(0.95f));
+            dbApp.insertIntoTable(strTableName, htblColNameValue);
+        } catch (DBAppException e) {
+            assertEquals("Invalid value for column gpa of type java.lang.Double", e.getMessage());
+        }
+    }
 }

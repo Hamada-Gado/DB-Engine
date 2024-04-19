@@ -169,7 +169,11 @@ public class DBApp {
     // htblColNameValue must include a value for the primary key
     public void insertIntoTable(String strTableName,
                                 Hashtable<String, Object> htblColNameValue) throws DBAppException {
-        //ToDo: validation
+        if (strTableName == null || htblColNameValue == null){
+            throw new DBAppException(("No value being inserted"));
+        }
+
+        Util.validateCols(strTableName, htblColNameValue);
 
         Hashtable<String, Hashtable<String, String[]>> metaData = Util.getMetadata(strTableName);
         if (metaData.get(strTableName) == null) {
@@ -177,6 +181,9 @@ public class DBApp {
         }
 
         String pKey = metaData.get(strTableName).get("clusteringKey")[0];
+        if (!htblColNameValue.containsKey(pKey)) {
+            throw new DBAppException("Primary key not found");
+        }
         Comparable pValue = (Comparable) htblColNameValue.get(pKey);
 
         Table currentTable = Table.loadTable(strTableName);
@@ -276,7 +283,7 @@ public class DBApp {
         if (htblColNameValue != null && htblColNameValue.isEmpty()) {
             throw new DBAppException("Delete condition cannot be empty.");
         }
-        Util.validateTypes(strTableName, htblColNameValue);
+        Util.validateCols(strTableName, htblColNameValue);
 
         // 2. Load the table & check if it exists
         Table table = Table.loadTable(strTableName);
@@ -429,7 +436,7 @@ public class DBApp {
                 throw new DBAppException("Invalid operator");
             }
 
-            Util.validateTypes(tableName, new Hashtable<>(Map.of(term._strColumnName, term._objValue)));
+            Util.validateCols(tableName, new Hashtable<>(Map.of(term._strColumnName, term._objValue)));
         }
 
         Table table = Table.loadTable(tableName);
