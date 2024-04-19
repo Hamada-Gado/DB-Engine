@@ -87,7 +87,6 @@ public class InsertTest {
             }
 
             assertEquals(3, Table.loadTable(strTableName).pagesCount());
-//            System.out.println(Table.loadTable(strTableName));
         } catch (DBAppException e) {
             e.printStackTrace();
             fail("DBAppException thrown");
@@ -123,7 +122,6 @@ public class InsertTest {
             time = (System.nanoTime() - time) / 1000000000;
             System.out.println("Time taken: " + time + " secs");
             Table table = Table.loadTable(strTableName);
-//            System.out.println(table);
             assertEquals(3, table.pagesCount());
 
             DBBTree index = DBBTree.loadIndex(strTableName, "BTree-Name");

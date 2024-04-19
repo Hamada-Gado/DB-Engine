@@ -303,9 +303,6 @@ class SelectTest {
             ArrayList list = new ArrayList();
             resultSet.forEachRemaining(list::add);
 
-//            System.out.println(Table.loadTable(strTableName));
-//            System.out.println(list);
-
             assertEquals(3, list.size());
             assertEquals(2, ((Record) list.get(0)).hashtable().get("id"));
             assertEquals(10, ((Record) list.get(1)).hashtable().get("id"));

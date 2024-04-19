@@ -3,9 +3,10 @@ package DB;
 import BTree.DBBTree;
 import org.junit.jupiter.api.Test;
 
+import java.util.HashMap;
 import java.util.Hashtable;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.*;
 
 public class UpdateTest {
 
@@ -29,29 +30,28 @@ public class UpdateTest {
             htblColNameValue.put("name", "John Doe");
             htblColNameValue.put("gpa", 3.5);
             dbApp.insertIntoTable(strTableName, htblColNameValue);
-            System.out.println("Table created successfully");
-            System.out.println(Table.loadTable(strTableName));
+            dbApp.createIndex(strTableName, "name", "nameIndex");
 
-            //create index
-            dbApp.createIndex(strTableName, "name","nameIndex");
-            System.out.println("Index created successfully");
-            DBBTree.loadIndex(strTableName,"nameIndex").print();
             // Update the record
             Hashtable<String, Object> htblColNameValueUpdate = new Hashtable<>();
             htblColNameValueUpdate.put("name", "Jane Doe");
             dbApp.updateTable(strTableName, "1", htblColNameValueUpdate);
 
-            System.out.println("Record updated successfully");
-            System.out.println(Table.loadTable(strTableName));
-            System.out.println("index after update");
-            DBBTree tree = DBBTree.loadIndex(strTableName,"nameIndex");
-            System.out.println(tree);
-            // Assert that the record was updated correctly
-            // You will need to implement a method to retrieve a record from the table for this assertion
-            // create index
+            // Check if the record was updated
+            Table table = Table.loadTable(strTableName);
+            DBBTree tree = DBBTree.loadIndex(strTableName, "nameIndex");
+            assertEquals("Jane Doe", table.getPage(0).getRecords().getFirst().hashtable().get("name"));
+            HashMap<Integer, Integer> res = tree.search("Jane Doe");
+            assertNotNull(res);
+            assertEquals(1, res.size());
+            assertTrue(res.containsKey(0));
+            assertEquals(1, res.get(0));
+
+            res = tree.search("John Doe");
+            assertNull(res);
         } catch (DBAppException e) {
             e.printStackTrace();
-
+            fail("An exception occurred");
         }
     }
 }

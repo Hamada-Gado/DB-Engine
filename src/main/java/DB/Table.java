@@ -24,10 +24,6 @@ public class Table implements Iterable<Page>, Cloneable, Serializable {
         clusteringKeyMin = new Vector<>();
     }
 
-    public String getTableName() {
-        return tableName;
-    }
-
     public Vector<String> getPagesPath() {
         return pagesPath;
     }
@@ -36,10 +32,16 @@ public class Table implements Iterable<Page>, Cloneable, Serializable {
         return clusteringKeyMin;
     }
 
+    public void clear() {
+        pagesPath.clear();
+        clusteringKeyMin.clear();
+        lastPageNumber = 0;
+    }
+
     /**
      * Serialize the table only not the pages
      */
-    public void updateTable() {
+    public void saveTable() {
         Path path = Paths.get((String) DBApp.getDbConfig().get("DataPath"), tableName, tableName + ".ser");
         try (
                 FileOutputStream fileOut = new FileOutputStream(path.toAbsolutePath().toString());
@@ -60,18 +62,18 @@ public class Table implements Iterable<Page>, Cloneable, Serializable {
     public Page addPage(int max) {
         Page page = new Page(tableName, lastPageNumber++, max);
 
-        page.updatePage();
+        page.savePage();
 
         Path path = Paths.get((String) DBApp.getDbConfig().get("DataPath"), tableName, page.getPageNumber() + ".ser");
         pagesPath.add(path.toAbsolutePath().toString());
 
-        updateTable();
+        saveTable();
 
         return page;
     }
 
 
-    public void removePage(Page page, int index) {
+    public void removePage(int index) {
         File file = new File(pagesPath.get(index));
         if (!file.delete()) {
             throw new RuntimeException("Failed to delete the page");
@@ -86,7 +88,7 @@ public class Table implements Iterable<Page>, Cloneable, Serializable {
         String pageName = Paths.get((String) DBApp.getDbConfig().get("DataPath"),
                 tableName, page.getPageNumber() + ".ser").toAbsolutePath().toString();
         int index = pagesPath.indexOf(pageName);
-        removePage(page, index);
+        removePage(index);
     }
 
     /**
@@ -129,13 +131,13 @@ public class Table implements Iterable<Page>, Cloneable, Serializable {
     public void addRecord(Record record, String pKey, Page page) {
         page.add(record);
         clusteringKeyMin.add(page.getPageNumber(), (Comparable) page.getRecords().getFirst().hashtable().get(pKey));
-        updateTable();
+        saveTable();
     }
 
     public void addRecord(int recordNo, Record record, String pKey, Page page) {
         page.add(recordNo, record);
         clusteringKeyMin.add(page.getPageNumber(), (Comparable) page.getRecords().getFirst().hashtable().get(pKey));
-        updateTable();
+        saveTable();
     }
 
     public Record removeRecord(int recordNo, String pKey, Page page) {
@@ -149,7 +151,7 @@ public class Table implements Iterable<Page>, Cloneable, Serializable {
         } else {
             clusteringKeyMin.add(page.getPageNumber(), (Comparable) page.getRecords().getFirst().hashtable().get(pKey));
         }
-        updateTable();
+        saveTable();
 
         return htbl;
     }
