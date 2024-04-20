@@ -101,6 +101,10 @@ public class DBApp {
             }
         }
 
+        if (!htblColNameType.containsKey(strClusteringKeyColumn)) {
+            throw new DBAppException("Clustering Key is not given as input");
+        }
+
         String metadataPath = getDbConfig().getProperty("MetadataPath");
 
         // create a new table, and parent folder
@@ -176,14 +180,36 @@ public class DBApp {
         // Save the B+ tree to the disk
         bpt.saveIndex();
 
-        // get metadata
-        Hashtable<String, Hashtable<String, String[]>> metadata = Util.getMetadata(strTableName);
-        Hashtable<String, String[]> columnData = metadata.get(strTableName);
-        String[] columnDataArray = columnData.get(strColName);
-
+        // write to metadata
         String metadataPath = getDbConfig().getProperty("MetadataPath");
-        try (FileWriter writer = new FileWriter(metadataPath, true)) {
-            writer.write(strTableName + "," + strColName + "," + columnDataArray[0] + "," + columnDataArray[1] + "," + strIndexName + ",B+tree\n");
+        LinkedList<String> metadataString = new LinkedList<>();
+
+        try (BufferedReader br = new BufferedReader(new FileReader(metadataPath))) {
+            br.readLine();
+            String line;
+            while ((line = br.readLine()) != null) {
+                String[] parts = line.split(",");
+                String tName = parts[0];
+                String cName = parts[1];
+                String cType = parts[2];
+                String cKey = parts[3];
+
+                if (tName.equals(strTableName) && cName.equals(strColName)) {
+                    metadataString.add(strTableName + "," + strColName + "," + cType + ","
+                            + cKey + "," + strIndexName + ",B+tree\n");
+                } else {
+                    metadataString.add(line + "\n");
+                }
+            }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
+        try (FileWriter writer = new FileWriter(metadataPath, false)) {
+            writer.write(DBApp.metadataHeader);
+            for (String line : metadataString) {
+                writer.write(line);
+            }
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
