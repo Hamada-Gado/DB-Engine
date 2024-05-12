@@ -158,6 +158,7 @@ public class DBApp {
     public void createIndex(String strTableName,
                             String strColName,
                             String strIndexName) throws DBAppException {
+        // no need to use the index since we are doing binary search without deserializable the pages
         if (strTableName == null || strColName == null || strIndexName == null) {
             throw new DBAppException("Null arguments");
         }
@@ -245,6 +246,12 @@ public class DBApp {
             throw new DBAppException("Table not found");
         }
 
+        for (String colName : metaData.get(strTableName).keySet()) {
+            if (!colName.equals("clusteringKey") && htblColNameValue.get(colName) == null) {
+                throw new DBAppException("Column " + colName + " not provided");
+            }
+        }
+
         String pKey = metaData.get(strTableName).get("clusteringKey")[0];
         if (!htblColNameValue.containsKey(pKey)) {
             throw new DBAppException("Primary key not found");
@@ -301,12 +308,13 @@ public class DBApp {
     public void updateTable(String strTableName,
                             String strClusteringKeyValue,
                             Hashtable<String, Object> htblColNameValue) throws DBAppException {
+        // no need to use the index since we are doing binary search without deserializable the pages
         if (strTableName == null || strClusteringKeyValue == null || htblColNameValue == null) {
             throw new DBAppException("Null arguments");
         }
 
         if (htblColNameValue.isEmpty()) {
-            throw new DBAppException("No value being updated");
+            return;
         }
 
         Util.validateCols(strTableName, htblColNameValue);
@@ -569,8 +577,19 @@ public class DBApp {
             throw new DBAppException("Null arguments");
         }
 
-        if (arrSQLTerms.length == 0 || strarrOperators.length == 0
-                || arrSQLTerms.length != strarrOperators.length + 1) {
+        if (arrSQLTerms.length == 1 && arrSQLTerms[0]._strOperator.equals("*")) {
+            LinkedList<Record> result = new LinkedList<>();
+            Table<Object> table = Table.loadTable(arrSQLTerms[0]._strTableName);
+            for (Page p : table) {
+                for (Record record : p.getRecords()) {
+                    result.add(record);
+                }
+            }
+
+            return result.iterator();
+        }
+
+        if (arrSQLTerms.length != strarrOperators.length + 1) {
             throw new DBAppException("Invalid arguments");
         }
 
@@ -720,8 +739,15 @@ public class DBApp {
 
             String[] strarrOperators = new String[1];
             strarrOperators[0] = "OR";
-            // select * from Student where name = "John Noor" or gpa = 1.5;
             Iterator resultSet = dbApp.selectFromTable(arrSQLTerms, strarrOperators);
+
+            while (resultSet.hasNext()) {
+                Record record = (Record) resultSet.next();
+                System.out.println(record);
+            }
+
+            System.out.println("\n------------------------------------------\n");
+            System.out.println(Table.loadTable("Student"));
         } catch (Exception exp) {
             exp.printStackTrace();
         }

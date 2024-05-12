@@ -135,7 +135,7 @@ public class Page implements Serializable {
         StringBuilder res = new StringBuilder();
 
         for (Record record : records) {
-            res.append(record).append(",");
+            res.append(record).append("\n");
         }
 
         if (!res.isEmpty()) {
